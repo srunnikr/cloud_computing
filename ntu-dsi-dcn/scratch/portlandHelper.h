@@ -6,7 +6,6 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-module.h"
-#include "portlandProtocol.h"
 
 using namespace ns3;
 using namespace std;
@@ -56,4 +55,4 @@ public:
 
 	}
 
-}
+};
