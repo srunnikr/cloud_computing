@@ -17,7 +17,8 @@ class portlandHeader {
 	uint32_t packet_size;
 	PACKET_TYPE packet_type;
 	uint8_t *data;
-	map<Ipv4Address,Mac48Address> IpPmacTable;
+	map<string, string> IpPmacTable;
+	map<string, string>::iterator it;
 	portlandHelper helper;
 
 public:
@@ -26,6 +27,48 @@ public:
 		packet_size = 0;
 		packet_type = PKT_ARP_REQUEST;
 		data = NULL;
+	}
+
+	void addToTable(string ip, string pmac) {
+
+		IpPmacTable[ip] = pmac;
+
+	}
+
+	string getIpForPmac (string pmac) {
+
+		it = IpPmacTable.begin();
+		for (it = IpPmacTable.begin(); it != IpPmacTable.end(); ++it) {
+			if (it->second == pmac) {
+				return it->first;
+			}
+		}
+		return NULL;
+
+	}
+
+	bool isIpRegistered (string ip) {
+
+		it = IpPmacTable.find(ip);
+		return (it == IpPmacTable.end() ? false : true);
+
+	}
+
+	string getPmacForIp (string ip) {
+
+		if (isIpRegistered(ip)) {
+			return IpPmacTable[ip];
+		} else {
+			return NULL;
+		}
+
+	}
+
+	bool isPmacRegistered (string pmac) {
+
+		string ip = getIpForPmac(pmac);
+		return (ip.compare(NULL) == 0 ? false : true);
+
 	}
 
 	portlandHeader(PACKET_TYPE pktType, uint8_t message[], uint32_t message_len) {
