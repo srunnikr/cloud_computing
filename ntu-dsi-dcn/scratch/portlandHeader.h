@@ -7,6 +7,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-module.h"
 #include "portlandProtocol.h"
+#include "portlandHelper.h"
 
 using namespace ns3;
 using namespace std;
@@ -16,7 +17,8 @@ class portlandHeader {
 	uint32_t packet_size;
 	PACKET_TYPE packet_type;
 	uint8_t *data;
-	map<Ipv4Address,Mac48Address> IpPmacTable; 
+	map<Ipv4Address,Mac48Address> IpPmacTable;
+	portlandHelper helper;
 
 public:
 
@@ -60,9 +62,9 @@ public:
 		uint32_t packetsize = packet_size + sizeof(packet_type);
 		uint8_t pkt_buff[packetsize];
 		memset(pkt_buff, 0, packetsize);
-		memcpy(pkt_buff, data, packetsize);	
+		memcpy(pkt_buff, data, packetsize);
 		Ptr<Packet> pkt = Create<Packet> (pkt_buff, packetsize);
-		return pkt; 
+		return pkt;
 
 	}
 
@@ -83,7 +85,7 @@ public:
 		string type(pkt_type, 4);
 		string message(data, len - 4);
 
-		cout << "Parsed type string : "<< type <<endl; 
+		cout << "Parsed type string : "<< type <<endl;
 		cout << "Parsed data string : "<< message << endl;
 
 	}

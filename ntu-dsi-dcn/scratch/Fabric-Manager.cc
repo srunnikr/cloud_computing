@@ -33,7 +33,7 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t size) {
 	} else {
 
       	socket->Close ();
-    
+
     }
 
 }
@@ -54,7 +54,7 @@ static void SocketPrinter (Ptr<Socket> socket) {
 		uint8_t *buffer = new uint8_t[packet->GetSize ()];
 		packet->CopyData(buffer, packet->GetSize ());
 		std::string s = std::string((char*)buffer);
-		
+
 		for (uint32_t i=0; i<packet->GetSize(); ++i) {
 			printf("%d ", buffer[i]);
 		}
@@ -112,7 +112,9 @@ void RunSimulation (void){
 }
 
 int main (int argc, char *argv[]) {
-  RunSimulation ();
 
-  return 0;
+	RunSimulation ();
+
+	return 0;
+
 }
