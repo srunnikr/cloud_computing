@@ -480,17 +480,17 @@ private:
   typedef std::vector<ofi::Port> Ports_t;
   Ports_t m_ports;                      ///< Switch's ports
 
-  Ptr<ofi::Controller> m_controller;    ///< Connection to controller.
+  Ptr<ofi::Controller> m_fabricManager;    ///< Connection to controller.
 
   uint64_t m_id;                        ///< Unique identifier for this switch, needed for OpenFlow
   Time m_lookupDelay;                   ///< Flow Table Lookup Delay [overhead].
 
-  Time m_lastExecute;                   ///< Last time the periodic execution occurred.
-  uint16_t m_flags;                     ///< Flags; configurable by the controller.
-  uint16_t m_missSendLen;               ///< Flow Table Miss Send Length; configurable by the controller.
+  //Time m_lastExecute;                   ///< Last time the periodic execution occurred.
+  //uint16_t m_flags;                     ///< Flags; configurable by the controller.
+  //uint16_t m_missSendLen;               ///< Flow Table Miss Send Length; configurable by the controller.
 
+  // TODO: replace this with PMAC table
   sw_chain *m_chain;             ///< Flow Table; forwarding rules.
-  vport_table_t m_vportTable;    ///< Virtual Port Table
 };
 
 } // namespace ns3

@@ -105,6 +105,7 @@ PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   m_fabricManager = 0;
   // m_listenPVConn = 0;
 
+  // TODO: replace with PMAC table init code
   m_chain = chain_create ();
   if (m_chain == 0)
     {
@@ -133,7 +134,9 @@ PortlandSwitchNetDevice::DoDispose ()
 
   m_fabricManager = 0;
 
+  //TODO: cleanup PMAC table
   chain_destroy (m_chain);
+
   m_channel = 0;
   m_node = 0;
   NetDevice::DoDispose ();
@@ -322,6 +325,7 @@ PortlandSwitchNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t
   return SendFrom (packet, m_address, dest, protocolNumber);
 }
 
+// Packet forwarding does here
 bool
 PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const Address& dest, uint16_t protocolNumber)
 {
@@ -393,6 +397,7 @@ PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
   return Mac48Address::GetMulticast (addr);
 }
 
+// creation and extraction of packet data
 ofpbuf *
 PortlandSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, int mtu, uint16_t protocol)
 {
@@ -552,6 +557,7 @@ PortlandSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Addres
   return buffer;
 }
 
+// incoming packet parsing
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
                                             const Address& src, const Address& dst, PacketType packetType)
@@ -786,6 +792,7 @@ PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t
   SendOpenflowBuffer (buffer);
 }
 
+// useless for now
 void
 PortlandSwitchNetDevice::FillPortDesc (ofi::Port p, ofp_phy_port *desc)
 {
@@ -908,6 +915,7 @@ PortlandSwitchNetDevice::RunThroughPMACTable (uint32_t packet_uid, int port, boo
   Simulator::Schedule (m_lookupDelay, &PortlandSwitchNetDevice::FlowTableLookup, this, key, buffer, packet_uid, port, send_to_fabric_manager);
 }
 
+// incoming packet from fabric manager
 int
 PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
 {
@@ -952,6 +960,7 @@ PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
   return 0;
 }
 
+// fabric manager msg reception
 int
 PortlandSwitchNetDevice::ReceivePortMod (const void *msg)
 {
@@ -1254,6 +1263,7 @@ PortlandSwitchNetDevice::ReceiveEchoReply (const void *oh)
   return 0;
 }
 
+// Main handler for incoming messages from controller
 int
 PortlandSwitchNetDevice::ForwardControlInput (const void *msg, size_t length)
 {
