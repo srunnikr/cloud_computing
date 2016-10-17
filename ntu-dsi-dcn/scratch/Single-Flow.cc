@@ -41,6 +41,15 @@ SocketPrinter (Ptr<Socket> socket)
 
       InetSocketAddress senderAddress = InetSocketAddress::ConvertFrom (sender);
 
+      uint32_t addr_hostorder = senderAddress.GetIpv4().Get();
+      cout << "host order val " << addr_hostorder << endl;
+
+      Ipv4Address newAddr = Ipv4Address(addr_hostorder);
+      cout << "The address constructed from the host num : " << newAddr << endl;
+
+      //string sendAddr = senderAddress.GetIpv4();
+      //cout << sendAddr << endl;
+
       cout << "Received at=" << receiverAddress.GetIpv4() << ", rx bytes=" << packet->GetSize ()
             << ", payload= " << s << ", sender=" << senderAddress.GetIpv4() << endl;
     }

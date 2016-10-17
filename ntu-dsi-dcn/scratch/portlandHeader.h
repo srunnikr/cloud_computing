@@ -18,7 +18,7 @@ class portlandHeader {
 	PACKET_TYPE packet_type;
 	uint8_t *data;
 	map<string, string> IpPmacTable;
-	map<string, string>::iterator it;
+	map<string, string>::iterator it;	
 	portlandHelper helper;
 
 public:
