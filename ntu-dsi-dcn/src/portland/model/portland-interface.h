@@ -196,6 +196,44 @@ public:
     }
 
 private:
+
+    // IP - PMAC table and management functions
+    map<Ipv4Address, Mac48Address> IpPMACTable;
+    map<Ipv4Address, Mac48Address>::iterator it;
+
+    void addPMACToTable(Ipv4Address ip, Mac48Address pmac) {
+        IpPMACTable[ip] = pmac;
+    }
+
+    Ipv4Address getIPforPMAC(Mac48Address pmac) {
+        it = IpPMACTable.begin();
+        for (it = IpPMACTable.begin(); it != IpPMACTable.end(); ++it) {
+            if (it->second == pmac) {
+                return it->first;
+            }
+        }
+        return NULL;
+    }
+
+    bool isIPRegistered(Ipv4Address ip) {
+        it = IpPMACTable.find(ip);
+        return (it == IpPMACTable.end() ? false : true);
+    }
+
+    Mac48Address getPMACforIP(Ipv4Address ip) {
+        if (isIpRegistered(ip)) {
+            return IpPMACTable[ip];
+        } else {
+            return NULL;
+        }
+    }
+
+    bool isPmacRegistered (string pmac) {
+        string ip = getIPforPMAC(pmac);
+        return (ip.compare(NULL) == 0 ? false : true);
+    }
+
+    // Fabric manager function handlers for packet types
     void FabricManager_PMACRegisterHandler(PMACRegister* message) {
 
     }
