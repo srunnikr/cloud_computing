@@ -64,7 +64,7 @@ PortlandSwitchNetDevice::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::PortlandSwitchNetDevice")
     .SetParent<NetDevice> ()
-    .SetGroupName ("Openflow")
+    .SetGroupName ("Portland")
     .AddConstructor<PortlandSwitchNetDevice> ()
     .AddAttribute ("ID",
                    "The identification of the PortlandSwitchNetDevice/Datapath, needed for OpenFlow compatibility.",
@@ -90,6 +90,7 @@ PortlandSwitchNetDevice::GetTypeId (void)
   return tid;
 }
 
+// Portland NetDevice constructor
 PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   : m_node (0),
     m_ifIndex (0),
@@ -120,6 +121,7 @@ PortlandSwitchNetDevice::~PortlandSwitchNetDevice ()
   NS_LOG_FUNCTION_NOARGS ();
 }
 
+// PortlandSwitchNetDevice cleanup function
 void
 PortlandSwitchNetDevice::DoDispose ()
 {
@@ -127,7 +129,6 @@ PortlandSwitchNetDevice::DoDispose ()
 
   for (Ports_t::iterator b = m_ports.begin (), e = m_ports.end (); b != e; b++)
     {
-      //SendPortStatus (*b, OFPPR_DELETE);
       b->netdev = 0;
     }
   m_ports.clear ();
@@ -142,6 +143,7 @@ PortlandSwitchNetDevice::DoDispose ()
   NetDevice::DoDispose ();
 }
 
+// Add the FabricManager to the PortlandSwitchNetDevice
 void
 PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
 {
@@ -155,6 +157,8 @@ PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
   m_fabricManager->AddSwitch (this);
 }
 
+// Registers other NetDevices/NICs (eg. CsmaNetDevice) on the switch with this  PortlandSwitchNetDevice as switch ports,
+// and register the receive callback function with those devices.
 int
 PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
 {
@@ -178,9 +182,6 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
       pld::Port p;
       p.netdev = switchPort;
       m_ports.push_back (p);
-
-      // Notify the controller that this port has been added
-      //SendPortStatus (p, OFPPR_ADD);
 
       NS_LOG_DEBUG ("RegisterProtocolHandler for " << switchPort->GetInstanceTypeId ().GetName ());
       m_node->RegisterProtocolHandler (MakeCallback (&PortlandSwitchNetDevice::ReceiveFromDevice, this),
@@ -303,6 +304,7 @@ PortlandSwitchNetDevice::IsBridge (void) const
   return true;
 }
 
+// Function to send the packet out through one of the regular switch ports or if undecided, forward to fabric manager
 void
 PortlandSwitchNetDevice::DoOutput (uint32_t packet_uid, int in_port, size_t max_len, int out_port, bool ignore_no_fwd)
 {
@@ -324,7 +326,7 @@ PortlandSwitchNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t
   return SendFrom (packet, m_address, dest, protocolNumber);
 }
 
-// Packet forwarding does here
+// Receives packet from higher layer application (if any) and prepares to forward it. (No changes required here)
 bool
 PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const Address& dest, uint16_t protocolNumber)
 {
@@ -396,7 +398,7 @@ PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
   return Mac48Address::GetMulticast (addr);
 }
 
-// creation and extraction of packet data
+// Function to attract packet fields from the packet received and return a buffer with all necessary fields
 ofpbuf *
 PortlandSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, int mtu, uint16_t protocol)
 {
@@ -556,7 +558,7 @@ PortlandSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Addres
   return buffer;
 }
 
-// incoming packet parsing
+// Actual callback function called when a packet is received on a switch port (i.e. netdev here)
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
                                             const Address& src, const Address& dst, PacketType packetType)
@@ -654,6 +656,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
     }
 }
 
+// Function to flood a given packet on all except incoming port.
 int
 PortlandSwitchNetDevice::OutputAll (uint32_t packet_uid, int in_port, bool flood)
 {
@@ -685,6 +688,7 @@ PortlandSwitchNetDevice::OutputAll (uint32_t packet_uid, int in_port, bool flood
   return 0;
 }
 
+// Function to forward a given packet to the specified out port.
 void
 PortlandSwitchNetDevice::OutputPacket (uint32_t packet_uid, int out_port)
 {
@@ -712,6 +716,7 @@ PortlandSwitchNetDevice::OutputPacket (uint32_t packet_uid, int out_port)
   NS_LOG_DEBUG ("can't forward to bad port " << out_port);
 }
 
+//Function similar to previous one but with unconditional forwarding (ignore_no_fwd) to an out port.
 void
 PortlandSwitchNetDevice::OutputPort (uint32_t packet_uid, int in_port, int out_port, bool ignore_no_fwd)
 {
@@ -748,12 +753,14 @@ PortlandSwitchNetDevice::OutputPort (uint32_t packet_uid, int in_port, int out_p
     }
 }
 
+// Function to prepare a buffer containing reply to  controller/fabric manager message
 void*
 PortlandSwitchNetDevice::MakeOpenflowReply (size_t openflow_len, uint8_t type, ofpbuf **bufferp)
 {
   return make_openflow_xid (openflow_len, type, 0, bufferp);
 }
 
+// Function to send a buffer containing a message to the fabric manager
 int
 PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
 {
@@ -766,6 +773,7 @@ PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
   return 0;
 }
 
+// Function to forward packet info to the fabric manager
 void
 PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t max_len, int reason)
 {
@@ -791,7 +799,7 @@ PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t
   SendOpenflowBuffer (buffer);
 }
 
-// useless for now
+// useless for now; can be used for understanding buffer handing etc.
 void
 PortlandSwitchNetDevice::FillPortDesc (ofi::Port p, ofp_phy_port *desc)
 {
@@ -812,6 +820,7 @@ PortlandSwitchNetDevice::FillPortDesc (ofi::Port p, ofp_phy_port *desc)
   desc->peer = 0; // htonl(netdev_get_features(p->netdev, NETDEV_FEAT_PEER));
 }
 
+// useless for now; can be used to understand buffer handling
 void
 PortlandSwitchNetDevice::SendFlowExpired (sw_flow *flow, enum ofp_flow_expired_reason reason)
 {
@@ -830,6 +839,7 @@ PortlandSwitchNetDevice::SendFlowExpired (sw_flow *flow, enum ofp_flow_expired_r
   SendOpenflowBuffer (buffer);
 }
 
+// useless for now;
 void
 PortlandSwitchNetDevice::SendErrorMsg (uint16_t type, uint16_t code, const void *data, size_t len)
 {
@@ -841,7 +851,7 @@ PortlandSwitchNetDevice::SendErrorMsg (uint16_t type, uint16_t code, const void 
   SendOpenflowBuffer (buffer);
 }
 
-// TODO: modify to PMAC table lookup arguments
+// Function to lookup matching host fields in PMAC table return corresponding PMAC or assign PMAC and update fabric manager
 void
 PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabri_manager)
 {
@@ -914,7 +924,7 @@ PortlandSwitchNetDevice::RunThroughPMACTable (uint32_t packet_uid, int port, boo
   Simulator::Schedule (m_lookupDelay, &PortlandSwitchNetDevice::FlowTableLookup, this, key, buffer, packet_uid, port, send_to_fabric_manager);
 }
 
-// incoming packet from fabric manager
+// incoming packet/action from fabric manager (Eg: a flood ARP-Req to core switch)
 int
 PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
 {
@@ -959,7 +969,7 @@ PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
   return 0;
 }
 
-// fabric manager msg reception
+// useless for now; mostly to understand code
 int
 PortlandSwitchNetDevice::ReceivePortMod (const void *msg)
 {
@@ -1003,6 +1013,7 @@ PortlandSwitchNetDevice::ReceivePortMod (const void *msg)
   return 0;
 }
 
+//useless for now
 int
 PortlandSwitchNetDevice::AddFlow (const ofp_flow_mod *ofm)
 {
@@ -1079,6 +1090,7 @@ PortlandSwitchNetDevice::AddFlow (const ofp_flow_mod *ofm)
   return 0;
 }
 
+// useless for now
 int
 PortlandSwitchNetDevice::ModFlow (const ofp_flow_mod *ofm)
 {
@@ -1120,6 +1132,7 @@ PortlandSwitchNetDevice::ModFlow (const ofp_flow_mod *ofm)
   return 0;
 }
 
+// useless for now
 int
 PortlandSwitchNetDevice::ReceiveFlow (const void *msg)
 {
@@ -1155,114 +1168,21 @@ PortlandSwitchNetDevice::ReceiveFlow (const void *msg)
     }
 }
 
-int
-PortlandSwitchNetDevice::StatsDump (ofi::StatsDumpCallback *cb)
-{
-  ofp_stats_reply *osr;
-  ofpbuf *buffer;
-  int err;
-
-  if (cb->done)
-    {
-      return 0;
-    }
-
-  osr = (ofp_stats_reply*)MakeOpenflowReply (sizeof *osr, OFPT_STATS_REPLY, &buffer);
-  osr->type = htons (cb->s->type);
-  osr->flags = 0;
-
-  err = cb->s->DoDump (this, cb->state, buffer);
-  if (err >= 0)
-    {
-      if (err == 0)
-        {
-          cb->done = true;
-        }
-      else
-        {
-          // Buffer might have been reallocated, so find our data again.
-          osr = (ofp_stats_reply*)ofpbuf_at_assert (buffer, 0, sizeof *osr);
-          osr->flags = ntohs (OFPSF_REPLY_MORE);
-        }
-
-      int err2 = SendOpenflowBuffer (buffer);
-      if (err2)
-        {
-          err = err2;
-        }
-    }
-
-  return err;
-}
-
-void
-PortlandSwitchNetDevice::StatsDone (ofi::StatsDumpCallback *cb)
-{
-  if (cb)
-    {
-      cb->s->DoCleanup (cb->state);
-      free (cb->s);
-      free (cb);
-    }
-}
-
-int
-PortlandSwitchNetDevice::ReceiveStatsRequest (const void *oh)
-{
-  const ofp_stats_request *rq = (ofp_stats_request*)oh;
-  size_t rq_len = ntohs (rq->header.length);
-  int type = ntohs (rq->type);
-  int body_len = rq_len - offsetof (ofp_stats_request, body);
-  ofi::Stats* st = new ofi::Stats ((ofp_stats_types)type, (unsigned)body_len);
-
-  if (st == 0)
-    {
-      return -EINVAL;
-    }
-
-  ofi::StatsDumpCallback cb;
-  cb.done = false;
-  cb.rq = (ofp_stats_request*)xmemdup (rq, rq_len);
-  cb.s = st;
-  cb.state = 0;
-  cb.swtch = this;
-
-  if (cb.s)
-    {
-      int err = cb.s->DoInit (rq->body, body_len, &cb.state);
-      if (err)
-        {
-          NS_LOG_WARN ("failed initialization of stats request type " << type << ": " << strerror (-err));
-          free (cb.rq);
-          return err;
-        }
-    }
-
-  if (m_controller != 0)
-    {
-      m_controller->StartDump (&cb);
-    }
-  else
-    {
-      NS_LOG_ERROR ("Switch needs to be registered to a controller in order to start the stats reply.");
-    }
-
-  return 0;
-}
-
+// useless for now
 int
 PortlandSwitchNetDevice::ReceiveEchoRequest (const void *oh)
 {
   return SendOpenflowBuffer (make_echo_reply ((ofp_header*)oh));
 }
 
+// useless for now
 int
 PortlandSwitchNetDevice::ReceiveEchoReply (const void *oh)
 {
   return 0;
 }
 
-// Main handler for incoming messages from controller
+// Main handler for incoming messages from controller; calls specialized body parsers depending on type of message
 int
 PortlandSwitchNetDevice::ForwardControlInput (const void *msg, size_t length)
 {
@@ -1318,6 +1238,7 @@ PortlandSwitchNetDevice::ForwardControlInput (const void *msg, size_t length)
   return error;
 }
 
+// Function returns the equivalent PMACTable in this switch
 sw_chain*
 PortlandSwitchNetDevice::GetChain ()
 {
@@ -1353,4 +1274,4 @@ PortlandSwitchNetDevice::GetSwitchPortIndex (ofi::Port p)
 
 } // namespace ns3
 
-#endif // NS3_OPENFLOW
+#endif // NS3_PORTLAND

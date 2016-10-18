@@ -26,6 +26,7 @@ namespace pld {
 
 NS_LOG_COMPONENT_DEFINE ("PortlandInterface");
 
+// Used to validate if incoming message from switch has valid message type based-on Portland protocol
 bool
 Action::IsValidType (ofp_action_type type)
 {
@@ -49,6 +50,7 @@ Action::IsValidType (ofp_action_type type)
     }
 }
 
+// useless for now
 uint16_t
 Action::Validate (ofp_action_type type, size_t len, const sw_flow_key *key, const ofp_action_header *ah)
 {
@@ -113,6 +115,7 @@ Action::Validate (ofp_action_type type, size_t len, const sw_flow_key *key, cons
   return ACT_VALIDATION_OK;
 }
 
+// main handler to parse action/message type and call apecialized function to act on it
 void
 Action::Execute (ofp_action_type type, ofpbuf *buffer, sw_flow_key *key, const ofp_action_header *ah)
 {
@@ -152,6 +155,7 @@ Action::Execute (ofp_action_type type, ofpbuf *buffer, sw_flow_key *key, const o
     }
 }
 
+// Registers a PortlandSwitchNetDevice as a switch with the fabric manager.
 void
 FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
 {
@@ -165,6 +169,7 @@ FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
     }
 }
 
+// Function to send a message/action to the switch (Eg: flood ARP-Req sent to core switch)
 void
 FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, void * msg, size_t length)
 {
@@ -177,6 +182,7 @@ FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, void * msg, siz
   swtch->ForwardControlInput (msg, length);
 }
 
+// useless for now; can be used to understand how to build a buffer
 ofp_flow_mod*
 FabricManager::BuildFlow (sw_flow_key key, uint32_t buffer_id, uint16_t command, void* acts, size_t actions_len, int idle_timeout, int hard_timeout)
 {
@@ -208,6 +214,7 @@ FabricManager::BuildFlow (sw_flow_key key, uint32_t buffer_id, uint16_t command,
   return ofm;
 }
 
+// Function to extract Packet type/action from the message received from switch
 uint8_t
 FabricManager::GetPacketType (ofpbuf* buffer)
 {
@@ -217,6 +224,7 @@ FabricManager::GetPacketType (ofpbuf* buffer)
   return type;
 }
 
+// generic function (no change required)
 TypeId FabricManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::pld::FabricManager")
@@ -231,6 +239,7 @@ TypeId FabricManager::GetTypeId (void)
   return tid;
 }
 
+// Callback called when switch has to send a message to fabric manager
 void
 FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, ofpbuf* buffer)
 {
@@ -313,6 +322,7 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, ofpbuf* bu
     }
 }
 
+// Unsure how to use it; will revise description
 void
 ExecuteActions (Ptr<OpenFlowSwitchNetDevice> swtch, uint64_t packet_uid, ofpbuf* buffer, sw_flow_key *key, const ofp_action_header *actions, size_t actions_len, int ignore_no_fwd)
 {
@@ -379,6 +389,7 @@ ExecuteActions (Ptr<OpenFlowSwitchNetDevice> swtch, uint64_t packet_uid, ofpbuf*
     }
 }
 
+// useless for now
 uint16_t
 ValidateActions (const sw_flow_key *key, const ofp_action_header *actions, size_t actions_len)
 {
