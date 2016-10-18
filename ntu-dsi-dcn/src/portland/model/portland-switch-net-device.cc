@@ -143,7 +143,7 @@ PortlandSwitchNetDevice::DoDispose ()
 }
 
 void
-PortlandSwitchNetDevice::SetFabricManager (Ptr<ofi::Controller> fm)
+PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
 {
   if (m_fabricManager != 0)
     {
@@ -175,8 +175,7 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
 
   if (m_ports.size () < DP_MAX_PORTS)
     {
-      ofi::Port p;
-      p.config = 0;
+      pld::Port p;
       p.netdev = switchPort;
       m_ports.push_back (p);
 
@@ -331,7 +330,7 @@ PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const
 {
   NS_LOG_FUNCTION_NOARGS ();
 
-  ofpbuf *buffer = BufferFromPacket (packet,src,dest,GetMtu (),protocolNumber);
+  ofpbuf *buffer = BufferFromPacket (packet, src, dest, GetMtu (), protocolNumber);
 
   uint32_t packet_uid = save_buffer (buffer);
   ofi::SwitchPacketMetadata data;

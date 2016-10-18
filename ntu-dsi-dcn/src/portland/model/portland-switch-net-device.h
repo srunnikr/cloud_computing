@@ -22,7 +22,7 @@
  */
 
 #ifndef PORTLAND_SWITCH_NET_DEVICE_H
-#define OPENFLOW_SWITCH_NET_DEVICE_H
+#define PORTLAND_SWITCH_NET_DEVICE_H
 
 #include "ns3/simulator.h"
 #include "ns3/log.h"
@@ -46,7 +46,7 @@
 #include <map>
 #include <set>
 
-#include "openflow-interface.h"
+#include "portland-interface.h"
 
 namespace ns3 {
 
@@ -83,7 +83,7 @@ namespace ns3 {
  * \ingroup openflow 
  * \brief A net device that switches multiple LAN segments via an OpenFlow-compatible flow table
  */
-class OpenFlowSwitchNetDevice : public NetDevice
+class PortlandSwitchNetDevice : public NetDevice
 {
 public:
   /**
@@ -112,15 +112,15 @@ public:
   static const char * GetSerialNumber ();
   /**@}*/
 
-  OpenFlowSwitchNetDevice ();
-  virtual ~OpenFlowSwitchNetDevice ();
+  PortlandSwitchNetDevice ();
+  virtual ~PortlandSwitchNetDevice ();
 
   /**
    * \brief Set up the Switch's controller connection.
    *
    * \param c Pointer to a Controller.
    */
-  void SetController (Ptr<ofi::Controller> c);
+  void SetFabricManager (Ptr<pld::FabricManager> c);
 
   /**
    * \brief Add a 'port' to a switch device
@@ -139,26 +139,7 @@ public:
    * \sa #EXFULL
    */
   int AddSwitchPort (Ptr<NetDevice> switchPort);
-
-  /**
-   * \brief Stats callback is ready for a dump.
-   *
-   * Controllers have a callback system for status requests which calls this function.
-   *
-   * \param cb_ The callback data.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int StatsDump (ofi::StatsDumpCallback *cb_);
-
-  /**
-   * \brief Stats callback is done.
-   *
-   * Controllers have a callback system for status requests which calls this function.
-   *
-   * \param cb_ The callback data.
-   */
-  void StatsDone (ofi::StatsDumpCallback *cb_);
-
+  
   /**
    * \brief Called from the OpenFlow Interface to output the Packet on either a Port or the Controller
    *
@@ -180,11 +161,6 @@ public:
   int ForwardControlInput (const void *msg, size_t length);
 
   /**
-   * \return The flow table chain.
-   */
-  sw_chain* GetChain ();
-
-  /**
    * \return Number of switch ports attached to this switch.
    */
   uint32_t GetNSwitchPorts (void) const;
@@ -193,7 +169,7 @@ public:
    * \param p The Port to get the index of.
    * \return The index of the provided Port.
    */
-  int GetSwitchPortIndex (ofi::Port p);
+  int GetSwitchPortIndex (pld::Port p);
 
   /**
    * \param n index of the Port.
@@ -357,19 +333,6 @@ private:
   void SendFlowExpired (sw_flow *flow, enum ofp_flow_expired_reason reason);
 
   /**
-   * Send a reply about a Port's status to the controller.
-   *
-   * \param p The port to get status from.
-   * \param status The reason for sending this reply.
-   */
-  void SendPortStatus (ofi::Port p, uint8_t status);
-
-  /**
-   * Send a reply about this OpenFlow switch's virtual port table features to the controller.
-   */
-  void SendVPortTableFeatures ();
-
-  /**
    * Send a message to the controller. This method is the key
    * to communicating with the controller, it does the actual
    * sending. The other Send methods call this one when they
@@ -388,18 +351,7 @@ private:
    * \param port The port this packet was received over.
    * \param send_to_controller If set, sends to the controller if the packet isn't matched.
    */
-  void RunThroughFlowTable (uint32_t packet_uid, int port, bool send_to_controller = true);
-
-  /**
-   * Run the packet through the vport table. As with AddVPort,
-   * this doesn't have an understood use yet.
-   *
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param port The port this packet was received over.
-   * \param vport The virtual port this packet identifies itself by.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int RunThroughVPortTable (uint32_t packet_uid, int port, uint32_t vport);
+  void RunThroughFlowTable (uint32_t packet_uid, int port, bool send_to_fabric_manager = true);
 
   /**
    * Called by RunThroughFlowTable on a scheduled delay
@@ -411,24 +363,7 @@ private:
    * \param port The port the packet was received over.
    * \param send_to_controller 
    */
-  void FlowTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_controller);
-
-  /**
-   * Update the port status field of the switch port.
-   * A non-zero return value indicates some field has changed.
-   *
-   * \param p A reference to a Port; used to change its config and flag fields.
-   * \return true if the status of the Port is changed, false if unchanged (was already the right status).
-   */
-  int UpdatePortStatus (ofi::Port& p);
-
-  /**
-   * Fill out a description of the switch port.
-   *
-   * \param p The port to get the description from.
-   * \param desc A pointer to the description message; used to fill the description message with the data from the port.
-   */
-  void FillPortDesc (ofi::Port p, ofp_phy_port *desc);
+  void FlowTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabric_manager);
 
   /**
    * Generates an OpenFlow reply message based on the type.
@@ -460,8 +395,6 @@ private:
   int ReceiveStatsRequest (const void *oh);
   int ReceiveEchoRequest (const void *oh);
   int ReceiveEchoReply (const void *oh);
-  int ReceiveVPortMod (const void *msg);
-  int ReceiveVPortTableFeaturesRequest (const void *msg);
   /**@}*/
 
   /// Callbacks
@@ -474,20 +407,16 @@ private:
   uint32_t m_ifIndex;                   ///< Interface Index
   uint16_t m_mtu;                       ///< Maximum Transmission Unit
 
-  typedef std::map<uint32_t,ofi::SwitchPacketMetadata> PacketData_t;
+  typedef std::map<uint32_t,pld::SwitchPacketMetadata> PacketData_t;
   PacketData_t m_packetData;            ///< Packet data
 
-  typedef std::vector<ofi::Port> Ports_t;
+  typedef std::vector<pld::Port> Ports_t;
   Ports_t m_ports;                      ///< Switch's ports
 
-  Ptr<ofi::Controller> m_fabricManager;    ///< Connection to controller.
+  Ptr<pld::FabricManager> m_fabricManager;    ///< Connection to controller.
 
   uint64_t m_id;                        ///< Unique identifier for this switch, needed for OpenFlow
   Time m_lookupDelay;                   ///< Flow Table Lookup Delay [overhead].
-
-  //Time m_lastExecute;                   ///< Last time the periodic execution occurred.
-  //uint16_t m_flags;                     ///< Flags; configurable by the controller.
-  //uint16_t m_missSendLen;               ///< Flow Table Miss Send Length; configurable by the controller.
 
   // TODO: replace this with PMAC table
   sw_chain *m_chain;             ///< Flow Table; forwarding rules.
@@ -495,4 +424,4 @@ private:
 
 } // namespace ns3
 
-#endif /* OPENFLOW_SWITCH_NET_DEVICE_H */
+#endif /* PORTLAND_SWITCH_NET_DEVICE_H */
