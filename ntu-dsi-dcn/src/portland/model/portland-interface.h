@@ -252,7 +252,7 @@ private:
         }
     }
 
-    void FabricManager_ARPResponseHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch) {
+    void FabricManager_ARPResponseHandler(ARPResponse* message, Ptr<PortlandSwitchNetDevice> swtch) {
         SendToSwitch(swtch, message, sizeof(message));
     }
 
