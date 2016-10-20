@@ -27,6 +27,7 @@
 #include "ns3/simulator.h"
 #include "ns3/log.h"
 #include "ns3/mac48-address.h"
+#include "ns3/ipv4-address.h"
 
 #include "ns3/ethernet-header.h"
 #include "ns3/arp-header.h"
@@ -204,6 +205,21 @@ public:
   virtual Address GetMulticast (Ipv6Address addr) const;
 
 protected:
+
+  class PMACTable
+  {
+    public:
+      void Add(const Mac48Address& amac, const Mac48Address& pmac, uint32_t port);
+      void Remove(const Mac48Address& amac);
+      uint32_t FindPort(const Mac48Address& pmac);
+      Mac48Address FindAMAC(const Mac48Address& pmac);
+      Mac48Address FindPMAC(const Mac48Address& amac);
+
+    private:
+      std::map<Mac48Address, std::pair<Mac48Address, uint32_t>> port_mapping; // PMAC -> AMAC, host port mapping
+      std::map<Mac48Address, Mac48Address> mac_mapping; // AMAC -> PMAC mapping
+  };
+
   virtual void DoDispose (void);
 
   /**
@@ -413,13 +429,13 @@ private:
   typedef std::vector<pld::Port> Ports_t;
   Ports_t m_ports;                      ///< Switch's ports
 
-  Ptr<pld::FabricManager> m_fabricManager;    ///< Connection to controller.
+  Ptr<pld::FabricManager> m_fabricManager;    ///< Connection to fabric manager.
 
   uint64_t m_id;                        ///< Unique identifier for this switch, needed for OpenFlow
   Time m_lookupDelay;                   ///< Flow Table Lookup Delay [overhead].
 
   // TODO: replace this with PMAC table
-  sw_chain *m_chain;             ///< Flow Table; forwarding rules.
+  PMACTable m_table;             ///< PMAC Table; AMAC-IP <-> inport.
 };
 
 } // namespace ns3

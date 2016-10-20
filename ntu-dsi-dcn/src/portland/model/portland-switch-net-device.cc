@@ -308,8 +308,8 @@ PortlandSwitchNetDevice::IsBridge (void) const
 void
 PortlandSwitchNetDevice::DoOutput (uint32_t packet_uid, int in_port, size_t max_len, int out_port, bool ignore_no_fwd)
 {
-  // TODO: replace OFPP_CONTROLLER with fabric manager port constant
-  if (out_port != OFPP_CONTROLLER)
+  // outport = -1 indicates no outport found so forward to controller
+  if (out_port != -1)
     {
       OutputPort (packet_uid, in_port, out_port, ignore_no_fwd);
     }
@@ -1238,13 +1238,6 @@ PortlandSwitchNetDevice::ForwardControlInput (const void *msg, size_t length)
   return error;
 }
 
-// Function returns the equivalent PMACTable in this switch
-sw_chain*
-PortlandSwitchNetDevice::GetChain ()
-{
-  return m_chain;
-}
-
 uint32_t
 PortlandSwitchNetDevice::GetNSwitchPorts (void) const
 {
@@ -1252,7 +1245,7 @@ PortlandSwitchNetDevice::GetNSwitchPorts (void) const
   return m_ports.size ();
 }
 
-ofi::Port
+pld::Port
 PortlandSwitchNetDevice::GetSwitchPort (uint32_t n) const
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -1271,6 +1264,54 @@ PortlandSwitchNetDevice::GetSwitchPortIndex (ofi::Port p)
     }
   return -1;
 }
+
+void
+PortlandSwitchNetDevice::PMACTable::Add(const Mac48Address& amac, const Mac48Address& pmac, uint32_t port)
+{
+  port_mapping.insert(std::make_pair(pmac, std::make_pair(amac, port)));
+  mac_mapping.insert(std::make_pair(amac, pmac));
+}
+
+void
+PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
+{
+  mac_mapping.erase(amac);
+  std::map<Mac48Address, std::pair<Mac48Address, uint32_t>>::iterator it = port_mapping.begin();
+  bool found = false;
+  while(it != port_mapping.end())
+  {
+    if ((it->second)->first == amac)
+    {
+      found = true;
+      break;
+    }
+  }
+
+  if (found == true)
+  {
+    port_mapping.erase(it);
+  }
+}
+
+uint32_t
+PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac)
+{
+  return port_mapping[pmac]->second;
+}
+
+Mac48Address
+PortlandSwitchNetDevice::PMACTable::FindAMAC(const Mac48Address& pmac)
+{
+  return port_mapping[pmac]->first;
+}
+
+Mac48Address
+PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac)
+{
+  return mac_mapping[amac];
+}
+
+
 
 } // namespace ns3
 

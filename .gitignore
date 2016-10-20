@@ -127,3 +127,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# NS3 project files
+.hg
