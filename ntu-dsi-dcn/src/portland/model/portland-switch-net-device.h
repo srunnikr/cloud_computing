@@ -114,6 +114,7 @@ public:
   /**@}*/
 
   PortlandSwitchNetDevice ();
+  PortlandSwitchNetDevice(int device_type, int pod = 0, int position = 0);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
@@ -367,8 +368,13 @@ private:
    * \param port The port this packet was received over.
    * \param send_to_controller If set, sends to the controller if the packet isn't matched.
    */
-  void RunThroughFlowTable (uint32_t packet_uid, int port, bool send_to_fabric_manager = true);
+  void RunThroughPMACTable (uint32_t packet_uid, int port, bool send_to_fabric_manager = true);
 
+  /**
+   * Gets the output port index based on the destination PMAC address
+   */
+  uint8_t GetOutputPort(Mac48Address dst_pmac);
+  
   /**
    * Called by RunThroughFlowTable on a scheduled delay
    * to account for the flow table lookup overhead.
@@ -422,6 +428,12 @@ private:
   Ptr<BridgeChannel> m_channel;         ///< Collection of port channels into the Switch Channel.
   uint32_t m_ifIndex;                   ///< Interface Index
   uint16_t m_mtu;                       ///< Maximum Transmission Unit
+  
+  /// These are to be set during initialization of the device
+  /// Used in PortlandSwitchNetDevice::GetOutputPort
+  uint8_t m_device_type;                  ///< Device type: 0 - Core, 1 - Aggregate, 2 - Edge
+  uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
+  uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 
   typedef std::map<uint32_t,pld::SwitchPacketMetadata> PacketData_t;
   PacketData_t m_packetData;            ///< Packet data

@@ -851,9 +851,61 @@ PortlandSwitchNetDevice::SendErrorMsg (uint16_t type, uint16_t code, const void 
   SendOpenflowBuffer (buffer);
 }
 
+// Function that gets the output port index based on destination PMAC address
+// Each device has k ports; first half are south-bound, next half are north-bound
+// Device type and position are assumed to be known
+uint8_t
+PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
+{   
+  // dst_mac_buffer contains the six octets of the destination MAC address
+  uint8_t dst_pmac_buffer[6];
+  dst_pmac.CopyTo(dst_pmac_buffer);
+  uint16_t dst_pod = ((uint16_t) dst_pmac_buffer[0]) << 8 | dst_pmac_buffer[1];
+  
+  // if this device is core, downstream to dst_pod
+  if (m_device_type == 0)
+  {
+    return dst_pod;
+  }
+  
+  // if this device is aggregate: same pod -- downstream, otherwise -- upstream on random port to core
+  if (m_device_type == 1)
+  {
+    // same pod -- downstream
+    if (m_pod == dst_pod)
+    {
+      // return the dst_position -- this is the port connected to edge
+      return dst_pmac_buffer[2];
+    }
+    // different pod -- upstream
+    else
+    {
+      // random between k / 2 and k
+      return (k / 2) + rand() % (k / 2);
+    }
+  }
+  
+  // if this device is edge: same pod and position -- downstream, otherwise -- upstream on random port to aggregate
+  if (m_device_type == 2)
+  { 
+    // same pod and position
+    if (m_pod == dst_pod && m_position == dst_mac_buffer[2])
+    { 
+      // return the dst port -- this is the port connected to the dst host 
+      return dst_pmac_buffer[3];
+    }
+    // upstream
+    else
+    {
+      // random between k / 2 and k
+      return (k / 2) + rand() % (k / 2);
+    }
+  }
+}
+
 // Function to lookup matching host fields in PMAC table return corresponding PMAC or assign PMAC and update fabric manager
 void
-PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabri_manager)
+PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabric_manager)
 {
   sw_flow *flow = chain_lookup (m_chain, &key);
   if (flow != 0)
@@ -921,7 +973,7 @@ PortlandSwitchNetDevice::RunThroughPMACTable (uint32_t packet_uid, int port, boo
     }
 
   NS_LOG_INFO ("Matching against the PMAC table.");
-  Simulator::Schedule (m_lookupDelay, &PortlandSwitchNetDevice::FlowTableLookup, this, key, buffer, packet_uid, port, send_to_fabric_manager);
+  Simulator::Schedule (m_lookupDelay, &PortlandSwitchNetDevice::PMACTableLookup, this, key, buffer, packet_uid, port, send_to_fabric_manager);
 }
 
 // incoming packet/action from fabric manager (Eg: a flood ARP-Req to core switch)
