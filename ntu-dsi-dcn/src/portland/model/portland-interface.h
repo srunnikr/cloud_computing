@@ -133,6 +133,7 @@ typedef struct ARPRequest {
 } ARPRequest;
 
 typedef struct ARPResponse {
+	Ipv4Address responseIPAddress;
     Mac48Address responseMACAddress;
 } ARPResponse;
 
@@ -243,6 +244,7 @@ private:
         if (isIpRegistered(message->requestedIPAddress)) {
             // IP address present
             ARPResponse* msg = (ARPResponse*) malloc (sizeof(ARPResponse));
+			msg->responseIPAddress = message->requestedIPAddress;
             msg->responseMACAddress = getPMACforIP(message->requestedIPAddress);
             FabricManager_ARPResponseHandler(msg, swtch);
         } else {

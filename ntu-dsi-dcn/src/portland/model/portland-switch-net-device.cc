@@ -863,13 +863,13 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   uint16_t dst_pod = ((uint16_t) dst_pmac_buffer[0]) << 8 | dst_pmac_buffer[1];
   
   // if this device is core, downstream to dst_pod
-  if (m_device_type == 0)
+  if (m_device_type == CORE)
   {
     return dst_pod;
   }
   
   // if this device is aggregate: same pod -- downstream, otherwise -- upstream on random port to core
-  if (m_device_type == 1)
+  if (m_device_type == AGGREGATION)
   {
     // same pod -- downstream
     if (m_pod == dst_pod)
@@ -886,7 +886,7 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   }
   
   // if this device is edge: same pod and position -- downstream, otherwise -- upstream on random port to aggregate
-  if (m_device_type == 2)
+  if (m_device_type == EDGE)
   { 
     // same pod and position
     if (m_pod == dst_pod && m_position == dst_mac_buffer[2])
@@ -1244,8 +1244,13 @@ PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
 	// Figure out how to handle it.
 	switch (buffer.pkt_type) {
     case PKT_ARP_RESPONSE:
-		// XXX Handle response, add to local if edge
-		
+		ARPResponse* msg = (ARPResponse*)buffer.message;
+		if (m_device_type == EDGE) {
+			// XXX where do i get the original arp packet from own host??
+		} else { 
+			error = -EINVAL;
+		}
+
 		break;
     case PKT_ARP_FLOOD:
 		// XXX marshall packet and Flood downstream
