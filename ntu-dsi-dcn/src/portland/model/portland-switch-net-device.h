@@ -87,6 +87,12 @@ namespace ns3 {
 class PortlandSwitchNetDevice : public NetDevice
 {
 public:
+
+  enum PortlandSwitchType {
+    EDGE = 1,
+    AGGREGATION,
+    CORE
+  };
   /**
    * Register this type.
    * \return The TypeId.
@@ -431,7 +437,7 @@ private:
   
   /// These are to be set during initialization of the device
   /// Used in PortlandSwitchNetDevice::GetOutputPort
-  uint8_t m_device_type;                  ///< Device type: 0 - Core, 1 - Aggregate, 2 - Edge
+  PortlandSwitchType m_device_type;                  ///< Device type: 0 - Core, 1 - Aggregate, 2 - Edge
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 
