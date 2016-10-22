@@ -166,7 +166,7 @@ public:
    * \param length Length of the message.
    * \return 0 if everything's ok, otherwise an error number.
    */
-  int ForwardControlInput (const void *msg, size_t length);
+  int ForwardControlInput (BufferData buffer);
 
   /**
    * \return Number of switch ports attached to this switch.
@@ -312,7 +312,7 @@ private:
    * \param max_len The maximum number of bytes that the caller wants to be sent; a value of 0 indicates the entire packet should be sent.
    * \param reason Why the packet is being sent.
    */
-  void OutputControl (uint32_t packet_uid, int in_port, size_t max_len, int reason);
+  void OutputControl (uint32_t packet_uid, int in_port, size_t max_len, PACKET_TYPE type);
 
   /**
    * If an error message happened during the controller's request, send it to the controller.
