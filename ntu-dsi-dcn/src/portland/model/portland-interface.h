@@ -104,7 +104,7 @@ typedef struct ARPResponse {
 	Ipv4Address destIPAddress;
 	Ipv4Address destPMACAddress;
 	Ipv4Address srcIPAddress;
-    Mac48Address srchMACAddress;
+    Mac48Address srcPMACAddress;
 } ARPResponse;
 
 typedef struct ARPFloodRequest {
