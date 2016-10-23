@@ -71,48 +71,16 @@ struct Port
 };
 
 /**
- * \brief Class for handling Portland fabric manager actions.
- */
-struct Action
-{
-  /**
-   * \param type Type of Portland Action.
-   * \return true if the provided type is a type of flow table action.
-   */
-  static bool IsValidType (ofp_action_type type);
-
-  /**
-   * \brief Validates the action on whether its data is valid or not.
-   *
-   * \param type Type of action to validate.
-   * \param len Length of the action data.
-   * \param key Matching key for the flow that is tied to this action.
-   * \param ah Action's data header.
-   * \return ACT_VALIDATION_OK if the action checks out, otherwise an error type.
-   */
-  static uint16_t Validate (ofp_action_type type, size_t len, const sw_flow_key *key, const ofp_action_header *ah);
-
-  /**
-   * \brief Executes the action.
-   *
-   * \param type Type of action to execute.
-   * \param buffer Buffer of the Packet if it's needed for the action.
-   * \param key Matching key for the flow that is tied to this action.
-   * \param ah Action's data header.
-   */
-  static void Execute (ofp_action_type type, ofpbuf *buffer, sw_flow_key *key, const ofp_action_header *ah);
-};
-
-/**
  * \brief Packet Metadata, allows us to track the packet's metadata as it passes through the switch.
  */
 struct SwitchPacketMetadata
 {
-  Ptr<Packet> packet; ///< The Packet itself.
-  ofpbuf* buffer;               ///< The OpenFlow buffer as created from the Packet, with its data and headers.
-  uint16_t protocolNumber;      ///< Protocol type of the Packet when the Packet is received
-  Address src;             ///< Source Address of the Packet when the Packet is received
-  Address dst;             ///< Destination Address of the Packet when the Packet is received.
+  uint16_t protocol_number;      ///< Protocol type of the Packet when the Packet is received
+  Address src_mac;             ///< Source Address of the Packet when the Packet is received
+  Address dst_mac;             ///< Destination Address of the Packet when the Packet is received.
+  Ipv4Address src_ip;      ///< Source IPv4 Address of the Packet when the Packet is received
+  Ipv4Address dst_ip;      ///< Destination IPv4 Address of the Packet when the Packet is received.
+  bool is_arp_request;      ///< True if it is an ARP Request; False otherwise.
 };
 
 // Message information for fabric manager

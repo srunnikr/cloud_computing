@@ -94,26 +94,25 @@ PortlandSwitchNetDevice::GetTypeId (void)
 PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   : m_node (0),
     m_ifIndex (0),
-    m_mtu (0xffff)
+    m_mtu (0xffff),
+    m_device_type(1),
+    m_pod(0),
+    m_position(0),
+    m_packetData(),
+    m_upper_ports(),
+    m_lower_ports(),
+    m_fabricManager(0),
+    m_lookupDelay(0),
+    m_table()
 {
   NS_LOG_FUNCTION_NOARGS ();
 
   m_channel = CreateObject<BridgeChannel> ();
 
-  //time_init (); // OFSI's clock; needed to use the buffer storage system.
-  m_lastTimeout = time_now ();
-
   m_fabricManager = 0;
-  // m_listenPVConn = 0;
 
-  // TODO: replace with PMAC table init code
-  m_chain = chain_create ();
-  if (m_chain == 0)
-    {
-      NS_LOG_ERROR ("Not enough memory to create the flow table.");
-    }
-
-  m_ports.reserve (DP_MAX_PORTS);
+  m_upper_ports.reserve (DP_MAX_PORTS);
+  m_lower_ports.reserve (DP_MAX_PORTS);
 }
 
 PortlandSwitchNetDevice::~PortlandSwitchNetDevice ()
@@ -127,15 +126,19 @@ PortlandSwitchNetDevice::DoDispose ()
 {
   NS_LOG_FUNCTION_NOARGS ();
 
-  for (Ports_t::iterator b = m_ports.begin (), e = m_ports.end (); b != e; b++)
+  for (Ports_t::iterator b = m_upper_ports.begin (), e = m_upper_ports.end (); b != e; b++)
     {
       b->netdev = 0;
     }
-  m_ports.clear ();
+  m_upper_ports.clear ();
+  for (Ports_t::iterator b = m_lower_ports.begin (), e = m_lower_ports.end (); b != e; b++)
+    {
+      b->netdev = 0;
+    }
+  m_lower_ports.clear ();
 
   m_fabricManager = 0;
 
-  //TODO: cleanup PMAC table
   chain_destroy (m_chain);
 
   m_channel = 0;
@@ -160,7 +163,7 @@ PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
 // Registers other NetDevices/NICs (eg. CsmaNetDevice) on the switch with this  PortlandSwitchNetDevice as switch ports,
 // and register the receive callback function with those devices.
 int
-PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
+PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort, bool is_upper)
 {
   NS_LOG_FUNCTION_NOARGS ();
   NS_ASSERT (switchPort != this);
@@ -181,7 +184,14 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
     {
       pld::Port p;
       p.netdev = switchPort;
-      m_ports.push_back (p);
+      if (is_upper)
+      {
+        m_upper_ports.push_back (p);
+      } 
+      else
+      {
+        m_lower_ports.push_back (p);
+      }
 
       NS_LOG_DEBUG ("RegisterProtocolHandler for " << switchPort->GetInstanceTypeId ().GetName ());
       m_node->RegisterProtocolHandler (MakeCallback (&PortlandSwitchNetDevice::ReceiveFromDevice, this),
@@ -194,6 +204,20 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort)
     }
 
   return 0;
+}
+
+void
+PortlandSwitchNetDevice::SetDeviceType (const PortlandSwitchType device_type)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  m_device_type = device_type;
+}
+
+PortlandSwitchType
+PortlandSwitchNetDevice::GetDeviceType (void) const
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  return m_device_type;
 }
 
 void
@@ -399,163 +423,55 @@ PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
 }
 
 // Function to attract packet fields from the packet received and return a buffer with all necessary fields
-ofpbuf *
-PortlandSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, int mtu, uint16_t protocol)
+
+PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, int mtu, uint16_t protocol)
 {
-  NS_LOG_INFO ("Creating Openflow buffer from packet.");
+  NS_LOG_INFO ("Extracting metadata from packet.");
 
   Ptr<Packet> packet = constPacket->Copy ();
-  /*
-   * Allocate buffer with some headroom to add headers in forwarding
-   * to the controller or adding a vlan tag, plus an extra 2 bytes to
-   * allow IP headers to be aligned on a 4-byte boundary.
-   */
-  const int headroom = 128 + 2;
-  const int hard_header = VLAN_ETH_HEADER_LEN;
-  ofpbuf *buffer = ofpbuf_new (headroom + hard_header + mtu);
-  buffer->data = (char*)buffer->data + headroom + hard_header;
 
-  int l2_length = 0, l3_length = 0, l4_length = 0;
+  pld::SwitchPacketMetadata metadata;
+  metadata.src = src;              // Destination Mac Address
+  metadata.dst = dst;              // Source Mac Address
+  metadata.protocolNumber = protocol;
+  if (protocol != ArpL3Protocol::PROT_NUMBER && protocol != Ipv4L3Protocol::PROT_NUMBER)
+  {
+    NS_LOG_WARN ("Protocol unsupported: " << protocol);
+  }
 
-  //Parse Ethernet header
-  buffer->l2 = new eth_header;
-  eth_header* eth_h = (eth_header*)buffer->l2;
-  dst.CopyTo (eth_h->eth_dst);              // Destination Mac Address
-  src.CopyTo (eth_h->eth_src);              // Source Mac Address
-  if (protocol == ArpL3Protocol::PROT_NUMBER)
-    {
-      eth_h->eth_type = htons (ETH_TYPE_ARP);    // Ether Type
-    }
-  else if (protocol == Ipv4L3Protocol::PROT_NUMBER)
-    {
-      eth_h->eth_type = htons (ETH_TYPE_IP);    // Ether Type
-    }
-  else
-    {
-      NS_LOG_WARN ("Protocol unsupported: " << protocol);
-    }
   NS_LOG_INFO ("Parsed EthernetHeader");
-
-  l2_length = ETH_HEADER_LEN;
 
   // We have to wrap this because PeekHeader has an assert fail if we check for an Ipv4Header that isn't there.
   if (protocol == Ipv4L3Protocol::PROT_NUMBER)
     {
+      // IPv4 Packet
       Ipv4Header ip_hd;
       if (packet->PeekHeader (ip_hd))
         {
-          buffer->l3 = new ip_header;
-          ip_header* ip_h = (ip_header*)buffer->l3;
-          ip_h->ip_ihl_ver  = IP_IHL_VER (5, IP_VERSION);       // Version
-          ip_h->ip_tos      = ip_hd.GetTos ();                  // Type of Service/Differentiated Services
-          ip_h->ip_tot_len  = packet->GetSize ();               // Total Length
-          ip_h->ip_id       = ip_hd.GetIdentification ();       // Identification
-          ip_h->ip_frag_off = ip_hd.GetFragmentOffset ();       // Fragment Offset
-          ip_h->ip_ttl      = ip_hd.GetTtl ();                  // Time to Live
-          ip_h->ip_proto    = ip_hd.GetProtocol ();             // Protocol
-          ip_h->ip_src      = htonl (ip_hd.GetSource ().Get ()); // Source Address
-          ip_h->ip_dst      = htonl (ip_hd.GetDestination ().Get ()); // Destination Address
-          ip_h->ip_csum     = csum (&ip_h, sizeof ip_h);        // Header Checksum
+          metadata.src_ip = ip_hd.GetSource ();         // Source IP Address
+          metadata.dst_ip = ip_hd.GetDestination ();    // Destination IP Address
+          metadata.is_arp_request = false;              // This is not an ARP packet
+
           NS_LOG_INFO ("Parsed Ipv4Header");
           packet->RemoveHeader (ip_hd);
-
-          l3_length = IP_HEADER_LEN;
         }
     }
   else
     {
-      // ARP Packet; the underlying OpenFlow header isn't used to match, so this is probably superfluous.
+      // ARP Packet
       ArpHeader arp_hd;
       if (packet->PeekHeader (arp_hd))
         {
-          buffer->l3 = new arp_eth_header;
-          arp_eth_header* arp_h = (arp_eth_header*)buffer->l3;
-          arp_h->ar_hrd = ARP_HRD_ETHERNET;                             // Hardware type.
-          arp_h->ar_pro = ARP_PRO_IP;                                   // Protocol type.
-          arp_h->ar_op = arp_hd.m_type;                                 // Opcode.
-          arp_hd.GetDestinationHardwareAddress ().CopyTo (arp_h->ar_tha); // Target hardware address.
-          arp_hd.GetSourceHardwareAddress ().CopyTo (arp_h->ar_sha);    // Sender hardware address.
-          arp_h->ar_tpa = arp_hd.GetDestinationIpv4Address ().Get ();   // Target protocol address.
-          arp_h->ar_spa = arp_hd.GetSourceIpv4Address ().Get ();        // Sender protocol address.
-          arp_h->ar_hln = sizeof arp_h->ar_tha;                         // Hardware address length.
-          arp_h->ar_pln = sizeof arp_h->ar_tpa;                         // Protocol address length.
+          metadata.src_ip = arp_hd.GetSourceIpv4Address ();       // Source IP Address
+          metadata.dst_ip = arp_hd.GetDestinationIpv4Address ();  // Destination IP Address
+          metadata.is_arp_request = arp_hd.IsRequest ();          // If it is an ARP Request
+          
           NS_LOG_INFO ("Parsed ArpHeader");
           packet->RemoveHeader (arp_hd);
-
-          l3_length = ARP_ETH_HEADER_LEN;
         }
     }
 
-  if (protocol == Ipv4L3Protocol::PROT_NUMBER)
-    {
-      ip_header* ip_h = (ip_header*)buffer->l3;
-      if (ip_h->ip_proto == TcpL4Protocol::PROT_NUMBER)
-        {
-          TcpHeader tcp_hd;
-          if (packet->PeekHeader (tcp_hd))
-            {
-              buffer->l4 = new tcp_header;
-              tcp_header* tcp_h = (tcp_header*)buffer->l4;
-              tcp_h->tcp_src = htons (tcp_hd.GetSourcePort ());         // Source Port
-              tcp_h->tcp_dst = htons (tcp_hd.GetDestinationPort ());    // Destination Port
-              tcp_h->tcp_seq = tcp_hd.GetSequenceNumber ().GetValue (); // Sequence Number
-              tcp_h->tcp_ack = tcp_hd.GetAckNumber ().GetValue ();      // ACK Number
-              tcp_h->tcp_ctl = TCP_FLAGS (tcp_hd.GetFlags ());  // Data Offset + Reserved + Flags
-              tcp_h->tcp_winsz = tcp_hd.GetWindowSize ();       // Window Size
-              tcp_h->tcp_urg = tcp_hd.GetUrgentPointer ();      // Urgent Pointer
-              tcp_h->tcp_csum = csum (&tcp_h, sizeof tcp_h);    // Header Checksum
-              NS_LOG_INFO ("Parsed TcpHeader");
-              packet->RemoveHeader (tcp_hd);
-
-              l4_length = TCP_HEADER_LEN;
-            }
-        }
-      else if (ip_h->ip_proto == UdpL4Protocol::PROT_NUMBER)
-        {
-          UdpHeader udp_hd;
-          if (packet->PeekHeader (udp_hd))
-            {
-              buffer->l4 = new udp_header;
-              udp_header* udp_h = (udp_header*)buffer->l4;
-              udp_h->udp_src = htons (udp_hd.GetSourcePort ());     // Source Port
-              udp_h->udp_dst = htons (udp_hd.GetDestinationPort ()); // Destination Port
-              udp_h->udp_len = htons (UDP_HEADER_LEN + packet->GetSize ());
-
-              ip_header* ip_h = (ip_header*)buffer->l3;
-              uint32_t udp_csum = csum_add32 (0, ip_h->ip_src);
-              udp_csum = csum_add32 (udp_csum, ip_h->ip_dst);
-              udp_csum = csum_add16 (udp_csum, IP_TYPE_UDP << 8);
-              udp_csum = csum_add16 (udp_csum, udp_h->udp_len);
-              udp_csum = csum_continue (udp_csum, udp_h, sizeof udp_h);
-              udp_h->udp_csum = csum_finish (csum_continue (udp_csum, buffer->data, buffer->size)); // Header Checksum
-              NS_LOG_INFO ("Parsed UdpHeader");
-              packet->RemoveHeader (udp_hd);
-
-              l4_length = UDP_HEADER_LEN;
-            }
-        }
-    }
-
-  // Load any remaining packet data into buffer data
-  packet->CopyData ((uint8_t*)buffer->data, packet->GetSize ());
-
-  if (buffer->l4)
-    {
-      ofpbuf_push (buffer, buffer->l4, l4_length);
-      delete (tcp_header*)buffer->l4;
-    }
-  if (buffer->l3)
-    {
-      ofpbuf_push (buffer, buffer->l3, l3_length);
-      delete (ip_header*)buffer->l3;
-    }
-  if (buffer->l2)
-    {
-      ofpbuf_push (buffer, buffer->l2, l2_length);
-      delete (eth_header*)buffer->l2;
-    }
-
-  return buffer;
+  return metadata;
 }
 
 // Actual callback function called when a packet is received on a switch port (i.e. netdev here)
@@ -575,85 +491,67 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
   Mac48Address dst48 = Mac48Address::ConvertFrom (dst);
   NS_LOG_INFO ("Received packet from " << Mac48Address::ConvertFrom (src) << " looking for " << dst48);
 
-  for (size_t i = 0; i < m_ports.size (); i++)
+  bool from_upper = false;
+  uint32_t in_port = -1;
+  for (size_t i = 0; i < m_lower_ports.size (); i++)
     {
-      if (m_ports[i].netdev == netdev)
+      if (m_lower_ports[i].netdev == netdev)
         {
-          if (packetType == PACKET_HOST && dst48 == m_address)
-            {
-              m_rxCallback (this, packet, protocol, src);
-            }
-          else if (packetType == PACKET_BROADCAST || packetType == PACKET_MULTICAST || packetType == PACKET_OTHERHOST)
-            {
-              if (packetType == PACKET_OTHERHOST && dst48 == m_address)
-                {
-                  m_rxCallback (this, packet, protocol, src);
-                }
-              else
-                {
-                  if (packetType != PACKET_OTHERHOST)
-                    {
-                      m_rxCallback (this, packet, protocol, src);
-                    }
-
-                  ofi::SwitchPacketMetadata data;
-                  data.packet = packet->Copy ();
-
-                  ofpbuf *buffer = BufferFromPacket (data.packet,src,dst,netdev->GetMtu (),protocol);
-                  m_ports[i].rx_packets++;
-                  m_ports[i].rx_bytes += buffer->size;
-                  data.buffer = buffer;
-                  uint32_t packet_uid = save_buffer (buffer);
-
-                  data.protocolNumber = protocol;
-                  data.src = Address (src);
-                  data.dst = Address (dst);
-                  m_packetData.insert (std::make_pair (packet_uid, data));
-
-                  RunThroughPMACTable (packet_uid, i);
-                }
-            }
-
-          break;
+          from_upper = false;
+          in_port = i;
+          m_lower_ports[i].rx_packets++;
+          m_lower_ports[i].rx_bytes += packet.GetSize();
         }
     }
 
-  // Run periodic execution.
-  Time now = Simulator::Now ();
-  if (now >= Seconds (m_lastExecute.GetSeconds () + 1)) // If a second or more has passed from the simulation time, execute.
+  for (size_t i = 0; i < m_upper_ports.size (); i++)
     {
-      // If port status is modified in any way, notify the controller.
-      for (size_t i = 0; i < m_ports.size (); i++)
+      if (m_upper_ports[i].netdev == netdev)
         {
-          if (UpdatePortStatus (m_ports[i]))
-            {
-              SendPortStatus (m_ports[i], OFPPR_MODIFY);
-            }
+          from_upper = true;
+          in_port = i;
+          m_upper_ports[i].rx_packets++;
+          m_upper_ports[i].rx_bytes += packet.GetSize();
         }
+    }
 
-      // If any flows have expired, delete them and notify the controller.
-      List deleted = LIST_INITIALIZER (&deleted);
-      sw_flow *f, *n;
-      chain_timeout (m_chain, &deleted);
-      LIST_FOR_EACH_SAFE (f, n, sw_flow, node, &deleted)
+    
+    if (packetType == PACKET_HOST && dst48 == m_address)
       {
-        std::ostringstream str;
-        str << "Flow [";
-        for (int i = 0; i < 6; i++)
-          str << (i!=0 ? ":" : "") << std::hex << f->key.flow.dl_src[i]/16 << f->key.flow.dl_src[i]%16;
-        str << " -> ";
-        for (int i = 0; i < 6; i++)
-          str << (i!=0 ? ":" : "") << std::hex << f->key.flow.dl_dst[i]/16 << f->key.flow.dl_dst[i]%16;
-        str <<  "] expired.";
-	
-        NS_LOG_INFO (str.str ());
-        SendFlowExpired (f, (ofp_flow_expired_reason)f->reason);
-        list_remove (&f->node);
-        flow_free (f);
+        m_rxCallback (this, packet, protocol, src);
+      }
+    else if (packetType == PACKET_BROADCAST || packetType == PACKET_MULTICAST || packetType == PACKET_OTHERHOST)
+      {
+        if (packetType == PACKET_OTHERHOST && dst48 == m_address)
+          {
+            m_rxCallback (this, packet, protocol, src);
+          }
+        else
+          {
+            if (packetType != PACKET_OTHERHOST)
+              {
+                m_rxCallback (this, packet, protocol, src);
+              }
+            else
+            {
+              if (protocol == ArpL3Protocol::PROT_NUMBER)
+              {
+                // parse packet
+                pld::SwitchPacketMetadata metadata;
+                metadata = MetadataFromPacket (packet.Copy (), src, dst, netdev->GetMtu (), protocol);
+
+                RunThroughPMACTable (metadata, in_port);
+              }
+              else
+              {
+                // call PMAC-based forwarding logic
+              }
+            }
+
+           
+          }
       }
 
-      m_lastExecute = now;
-    }
 }
 
 // Function to flood a given packet on all except incoming port.

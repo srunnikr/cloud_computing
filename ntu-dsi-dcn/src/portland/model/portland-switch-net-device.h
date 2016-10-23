@@ -183,7 +183,11 @@ public:
    * \param n index of the Port.
    * \return The Port.
    */
-  ofi::Port GetSwitchPort (uint32_t n) const;
+  pld::Port GetSwitchPort (uint32_t n) const;
+
+  void PortlandSwitchNetDevice::SetDeviceType (const PortlandSwitchType device_type);
+
+  PortlandSwitchType PortlandSwitchNetDevice::GetDeviceType (void) const;
 
   // From NetDevice
   virtual void SetIfIndex (const uint32_t index);
@@ -437,7 +441,7 @@ private:
   
   /// These are to be set during initialization of the device
   /// Used in PortlandSwitchNetDevice::GetOutputPort
-  PortlandSwitchType m_device_type;                  ///< Device type: 0 - Core, 1 - Aggregate, 2 - Edge
+  PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 
@@ -445,7 +449,8 @@ private:
   PacketData_t m_packetData;            ///< Packet data
 
   typedef std::vector<pld::Port> Ports_t;
-  Ports_t m_ports;                      ///< Switch's ports
+  Ports_t m_upper_ports;                      ///< Switch's ports for upper layer connections
+  Ports_t m_lower_ports;                      ///< Switch's ports for lower layer connections
 
   Ptr<pld::FabricManager> m_fabricManager;    ///< Connection to fabric manager.
 
