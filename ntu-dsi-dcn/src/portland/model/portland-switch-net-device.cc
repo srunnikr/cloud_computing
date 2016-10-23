@@ -540,7 +540,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                 pld::SwitchPacketMetadata metadata;
                 metadata = MetadataFromPacket (packet.Copy (), src, dst, netdev->GetMtu (), protocol);
 
-                RunThroughPMACTable (metadata, in_port);
+                RunThroughPMACTable (metadata, in_port, from_upper);
               }
               else
               {
@@ -710,58 +710,6 @@ PortlandSwitchNetDevice::OutputControl (Ipv4Address srcIP, Mac48Address srcPMAC,
 	}
 }
 
-// useless for now; can be used for understanding buffer handing etc.
-void
-PortlandSwitchNetDevice::FillPortDesc (ofi::Port p, ofp_phy_port *desc)
-{
-  desc->port_no = htons (GetSwitchPortIndex (p));
-
-  std::ostringstream nm;
-  nm << "eth" << GetSwitchPortIndex (p);
-  strncpy ((char *)desc->name, nm.str ().c_str (), sizeof desc->name);
-
-  p.netdev->GetAddress ().CopyTo (desc->hw_addr);
-  desc->config = htonl (p.config);
-  desc->state = htonl (p.state);
-
-  /// \todo This should probably be fixed eventually to specify different available features.
-  desc->curr = 0; // htonl(netdev_get_features(p->netdev, NETDEV_FEAT_CURRENT));
-  desc->supported = 0; // htonl(netdev_get_features(p->netdev, NETDEV_FEAT_SUPPORTED));
-  desc->advertised = 0; // htonl(netdev_get_features(p->netdev, NETDEV_FEAT_ADVERTISED));
-  desc->peer = 0; // htonl(netdev_get_features(p->netdev, NETDEV_FEAT_PEER));
-}
-
-// useless for now; can be used to understand buffer handling
-void
-PortlandSwitchNetDevice::SendFlowExpired (sw_flow *flow, enum ofp_flow_expired_reason reason)
-{
-  ofpbuf *buffer;
-  ofp_flow_expired *ofe = (ofp_flow_expired*)MakeOpenflowReply (sizeof *ofe, OFPT_FLOW_EXPIRED, &buffer);
-  flow_fill_match (&ofe->match, &flow->key);
-
-  ofe->priority = htons (flow->priority);
-  ofe->reason = reason;
-  memset (ofe->pad, 0, sizeof ofe->pad);
-
-  ofe->duration     = htonl (time_now () - flow->created);
-  memset (ofe->pad2, 0, sizeof ofe->pad2);
-  ofe->packet_count = htonll (flow->packet_count);
-  ofe->byte_count   = htonll (flow->byte_count);
-  SendOpenflowBuffer (buffer);
-}
-
-// useless for now;
-void
-PortlandSwitchNetDevice::SendErrorMsg (uint16_t type, uint16_t code, const void *data, size_t len)
-{
-  ofpbuf *buffer;
-  ofp_error_msg *oem = (ofp_error_msg*)MakeOpenflowReply (sizeof(*oem) + len, OFPT_ERROR, &buffer);
-  oem->type = htons (type);
-  oem->code = htons (code);
-  memcpy (oem->data, data, len);
-  SendOpenflowBuffer (buffer);
-}
-
 // Function that gets the output port index based on destination PMAC address
 // Each device has k ports; first half are south-bound, next half are north-bound
 // Device type and position are assumed to be known
@@ -842,7 +790,7 @@ PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint3
 }
 
 void
-PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int port)
+PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int in_port, bool from_upper)
 {
   // port checking
   if (port > (k / 2))
@@ -857,9 +805,9 @@ PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int po
   Mac48Address src_pmac;
   
   // check for src_PMAC existence
-  if (m_table.ContainsIP(src_ip))
+  if (m_table.FindPort(src_ip) != 0)
   {
-    src_pmac = m_table.FindPMAC(src_ip);
+    src_pmac = m_table.FindPMAC(src_amac);
   }
   // else create src_ip - src_PMAC entry
   else
@@ -899,52 +847,6 @@ PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int po
   {
     OutputControl(src_ip, src_pmac, dst_ip, PKT_ARP_REQUEST);
   }
-}
-
-void
-PortlandSwitchNetDevice::RunThroughPMACTable (uint32_t packet_uid, int port, bool send_to_fabric_manager)
-{
-  ofi::SwitchPacketMetadata data = m_packetData.find (packet_uid)->second;
-  ofpbuf* buffer = data.buffer;
-
-  sw_flow_key key;
-  key.wildcards = 0; // Lookup cannot take wildcards.
-  // Extract the matching key's flow data from the packet's headers; if the policy is to drop fragments and the message is a fragment, drop it.
-  if (flow_extract (buffer, port != -1 ? port : OFPP_NONE, &key.flow) && (m_flags & OFPC_FRAG_MASK) == OFPC_FRAG_DROP)
-    {
-      ofpbuf_delete (buffer);
-      return;
-    }
-
-  // drop MPLS packets with TTL 1
-  if (buffer->l2_5)
-    {
-      mpls_header mpls_h;
-      mpls_h.value = ntohl (*((uint32_t*)buffer->l2_5));
-      if (mpls_h.ttl == 1)
-        {
-          // increment mpls drop counter
-          if (port != -1)
-            {
-              m_ports[port].mpls_ttl0_dropped++;
-            }
-          return;
-        }
-    }
-
-  // If we received the packet on a port, and opted not to receive any messages from it...
-  if (port != -1)
-    {
-      uint32_t config = m_ports[port].config;
-      if (config & (OFPPC_NO_RECV | OFPPC_NO_RECV_STP)
-          && config & (!eth_addr_equals (key.flow.dl_dst, stp_eth_addr) ? OFPPC_NO_RECV : OFPPC_NO_RECV_STP))
-        {
-          return;
-        }
-    }
-
-  NS_LOG_INFO ("Matching against the PMAC table.");
-  Simulator::Schedule (m_lookupDelay, &PortlandSwitchNetDevice::PMACTableLookup, this, key, buffer, packet_uid, port, send_to_fabric_manager);
 }
 
 // incoming packet/action from fabric manager (Eg: a flood ARP-Req to core switch)
@@ -989,219 +891,6 @@ PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
     }
 
   ofi::ExecuteActions (this, opo->buffer_id, buffer, &key, opo->actions, actions_len, true);
-  return 0;
-}
-
-// useless for now; mostly to understand code
-int
-PortlandSwitchNetDevice::ReceivePortMod (const void *msg)
-{
-  ofp_port_mod* opm = (ofp_port_mod*)msg;
-
-  int port = opm->port_no; // ntohs(opm->port_no);
-  if (port < DP_MAX_PORTS)
-    {
-      ofi::Port& p = m_ports[port];
-
-      // Make sure the port id hasn't changed since this was sent
-      Mac48Address hw_addr = Mac48Address ();
-      hw_addr.CopyFrom (opm->hw_addr);
-      if (p.netdev->GetAddress () != hw_addr)
-        {
-          return 0;
-        }
-
-      if (opm->mask)
-        {
-          uint32_t config_mask = ntohl (opm->mask);
-          p.config &= ~config_mask;
-          p.config |= ntohl (opm->config) & config_mask;
-        }
-
-      if (opm->mask & htonl (OFPPC_PORT_DOWN))
-        {
-          if ((opm->config & htonl (OFPPC_PORT_DOWN)) && (p.config & OFPPC_PORT_DOWN) == 0)
-            {
-              p.config |= OFPPC_PORT_DOWN;
-              /// \todo Possibly disable the Port's Net Device via the appropriate interface.
-            }
-          else if ((opm->config & htonl (OFPPC_PORT_DOWN)) == 0 && (p.config & OFPPC_PORT_DOWN))
-            {
-              p.config &= ~OFPPC_PORT_DOWN;
-              /// \todo Possibly enable the Port's Net Device via the appropriate interface.
-            }
-        }
-    }
-
-  return 0;
-}
-
-//useless for now
-int
-PortlandSwitchNetDevice::AddFlow (const ofp_flow_mod *ofm)
-{
-  size_t actions_len = ntohs (ofm->header.length) - sizeof *ofm;
-
-  // Allocate memory.
-  sw_flow *flow = flow_alloc (actions_len);
-  if (flow == 0)
-    {
-      if (ntohl (ofm->buffer_id) != (uint32_t) -1)
-        {
-          discard_buffer (ntohl (ofm->buffer_id));
-        }
-      return -ENOMEM;
-    }
-
-  flow_extract_match (&flow->key, &ofm->match);
-
-  uint16_t v_code = ofi::ValidateActions (&flow->key, ofm->actions, actions_len);
-  if (v_code != ACT_VALIDATION_OK)
-    {
-      SendErrorMsg (OFPET_BAD_ACTION, v_code, ofm, ntohs (ofm->header.length));
-      flow_free (flow);
-      if (ntohl (ofm->buffer_id) != (uint32_t) -1)
-        {
-          discard_buffer (ntohl (ofm->buffer_id));
-        }
-      return -ENOMEM;
-    }
-
-  // Fill out flow.
-  flow->priority = flow->key.wildcards ? ntohs (ofm->priority) : -1;
-  flow->idle_timeout = ntohs (ofm->idle_timeout);
-  flow->hard_timeout = ntohs (ofm->hard_timeout);
-  flow->used = flow->created = time_now ();
-  flow->sf_acts->actions_len = actions_len;
-  flow->byte_count = 0;
-  flow->packet_count = 0;
-  memcpy (flow->sf_acts->actions, ofm->actions, actions_len);
-
-  // Act.
-  int error = chain_insert (m_chain, flow);
-  if (error)
-    {
-      if (error == -ENOBUFS)
-        {
-          SendErrorMsg (OFPET_FLOW_MOD_FAILED, OFPFMFC_ALL_TABLES_FULL, ofm, ntohs (ofm->header.length));
-        }
-      flow_free (flow);
-      if (ntohl (ofm->buffer_id) != (uint32_t) -1)
-        {
-          discard_buffer (ntohl (ofm->buffer_id));
-        }
-      return error;
-    }
-
-  NS_LOG_INFO ("Added new flow.");
-  if (ntohl (ofm->buffer_id) != std::numeric_limits<uint32_t>::max ())
-    {
-      ofpbuf *buffer = retrieve_buffer (ofm->buffer_id); // ntohl(ofm->buffer_id)
-      if (buffer)
-        {
-          sw_flow_key key;
-          flow_used (flow, buffer);
-          flow_extract (buffer, ntohs(ofm->match.in_port), &key.flow); // ntohs(ofm->match.in_port);
-          ofi::ExecuteActions (this, ofm->buffer_id, buffer, &key, ofm->actions, actions_len, false);
-          ofpbuf_delete (buffer);
-        }
-      else
-        {
-          return -ESRCH;
-        }
-    }
-  return 0;
-}
-
-// useless for now
-int
-PortlandSwitchNetDevice::ModFlow (const ofp_flow_mod *ofm)
-{
-  sw_flow_key key;
-  flow_extract_match (&key, &ofm->match);
-
-  size_t actions_len = ntohs (ofm->header.length) - sizeof *ofm;
-
-  uint16_t v_code = ofi::ValidateActions (&key, ofm->actions, actions_len);
-  if (v_code != ACT_VALIDATION_OK)
-    {
-      SendErrorMsg ((ofp_error_type)OFPET_BAD_ACTION, v_code, ofm, ntohs (ofm->header.length));
-      if (ntohl (ofm->buffer_id) != (uint32_t) -1)
-        {
-          discard_buffer (ntohl (ofm->buffer_id));
-        }
-      return -ENOMEM;
-    }
-
-  uint16_t priority = key.wildcards ? ntohs (ofm->priority) : -1;
-  int strict = (ofm->command == htons (OFPFC_MODIFY_STRICT)) ? 1 : 0;
-  chain_modify (m_chain, &key, priority, strict, ofm->actions, actions_len);
-
-  if (ntohl (ofm->buffer_id) != std::numeric_limits<uint32_t>::max ())
-    {
-      ofpbuf *buffer = retrieve_buffer (ofm->buffer_id); // ntohl (ofm->buffer_id)
-      if (buffer)
-        {
-          sw_flow_key skb_key;
-          flow_extract (buffer, ntohs(ofm->match.in_port), &skb_key.flow); // ntohs(ofm->match.in_port);
-          ofi::ExecuteActions (this, ofm->buffer_id, buffer, &skb_key, ofm->actions, actions_len, false);
-          ofpbuf_delete (buffer);
-        }
-      else
-        {
-          return -ESRCH;
-        }
-    }
-  return 0;
-}
-
-// useless for now
-int
-PortlandSwitchNetDevice::ReceiveFlow (const void *msg)
-{
-  NS_LOG_FUNCTION_NOARGS ();
-  const ofp_flow_mod *ofm = (ofp_flow_mod*)msg;
-  uint16_t command = ntohs (ofm->command);
-
-  if (command == OFPFC_ADD)
-    {
-      return AddFlow (ofm);
-    }
-  else if ((command == OFPFC_MODIFY) || (command == OFPFC_MODIFY_STRICT))
-    {
-      return ModFlow (ofm);
-    }
-  else if (command == OFPFC_DELETE)
-    {
-      sw_flow_key key;
-      flow_extract_match (&key, &ofm->match);
-      return chain_delete (m_chain, &key, ofm->out_port, 0, 0) ? 0 : -ESRCH;
-    }
-  else if (command == OFPFC_DELETE_STRICT)
-    {
-      sw_flow_key key;
-      uint16_t priority;
-      flow_extract_match (&key, &ofm->match);
-      priority = key.wildcards ? ntohs (ofm->priority) : -1;
-      return chain_delete (m_chain, &key, ofm->out_port, priority, 1) ? 0 : -ESRCH;
-    }
-  else
-    {
-      return -ENODEV;
-    }
-}
-
-// useless for now
-int
-PortlandSwitchNetDevice::ReceiveEchoRequest (const void *oh)
-{
-  return SendOpenflowBuffer (make_echo_reply ((ofp_header*)oh));
-}
-
-// useless for now
-int
-PortlandSwitchNetDevice::ReceiveEchoReply (const void *oh)
-{
   return 0;
 }
 

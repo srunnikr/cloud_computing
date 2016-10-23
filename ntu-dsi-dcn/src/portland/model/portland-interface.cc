@@ -26,134 +26,6 @@ namespace pld {
 
 NS_LOG_COMPONENT_DEFINE ("PortlandInterface");
 
-// Used to validate if incoming message from switch has valid message type based-on Portland protocol
-bool
-Action::IsValidType (ofp_action_type type)
-{
-  switch (type)
-    {
-    case OFPAT_OUTPUT:
-    case OFPAT_SET_VLAN_VID:
-    case OFPAT_SET_VLAN_PCP:
-    case OFPAT_STRIP_VLAN:
-    case OFPAT_SET_DL_SRC:
-    case OFPAT_SET_DL_DST:
-    case OFPAT_SET_NW_SRC:
-    case OFPAT_SET_NW_DST:
-    case OFPAT_SET_TP_SRC:
-    case OFPAT_SET_TP_DST:
-    case OFPAT_SET_MPLS_LABEL:
-    case OFPAT_SET_MPLS_EXP:
-      return true;
-    default:
-      return false;
-    }
-}
-
-// useless for now
-uint16_t
-Action::Validate (ofp_action_type type, size_t len, const sw_flow_key *key, const ofp_action_header *ah)
-{
-  size_t size = 0;
-
-  switch (type)
-    {
-    case OFPAT_OUTPUT:
-      {
-        if (len != sizeof(ofp_action_output))
-          {
-            return OFPBAC_BAD_LEN;
-          }
-
-        ofp_action_output *oa = (ofp_action_output *)ah;
-
-        // To prevent loops, make sure there's no action to send to the OFP_TABLE virtual port.
-
-        // port is now 32-bit
-        if (oa->port == OFPP_NONE || oa->port == key->flow.in_port) // htonl(OFPP_NONE);
-          { // if (oa->port == htons(OFPP_NONE) || oa->port == key->flow.in_port)
-            return OFPBAC_BAD_OUT_PORT;
-          }
-
-        return ACT_VALIDATION_OK;
-      }
-    case OFPAT_SET_VLAN_VID:
-      size = sizeof(ofp_action_vlan_vid);
-      break;
-    case OFPAT_SET_VLAN_PCP:
-      size = sizeof(ofp_action_vlan_pcp);
-      break;
-    case OFPAT_STRIP_VLAN:
-      size = sizeof(ofp_action_header);
-      break;
-    case OFPAT_SET_DL_SRC:
-    case OFPAT_SET_DL_DST:
-      size = sizeof(ofp_action_dl_addr);
-      break;
-    case OFPAT_SET_NW_SRC:
-    case OFPAT_SET_NW_DST:
-      size = sizeof(ofp_action_nw_addr);
-      break;
-    case OFPAT_SET_TP_SRC:
-    case OFPAT_SET_TP_DST:
-      size = sizeof(ofp_action_tp_port);
-      break;
-    case OFPAT_SET_MPLS_LABEL:
-      size = sizeof(ofp_action_mpls_label);
-      break;
-    case OFPAT_SET_MPLS_EXP:
-      size = sizeof(ofp_action_mpls_exp);
-      break;
-    default:
-      break;
-    }
-
-  if (len != size)
-    {
-      return OFPBAC_BAD_LEN;
-    }
-  return ACT_VALIDATION_OK;
-}
-
-// main handler to parse action/message type and call apecialized function to act on it
-void
-Action::Execute (ofp_action_type type, ofpbuf *buffer, sw_flow_key *key, const ofp_action_header *ah)
-{
-  switch (type)
-    {
-    case OFPAT_OUTPUT:
-      break;
-    case OFPAT_SET_VLAN_VID:
-      set_vlan_vid (buffer, key, ah);
-      break;
-    case OFPAT_SET_VLAN_PCP:
-      set_vlan_pcp (buffer, key, ah);
-      break;
-    case OFPAT_STRIP_VLAN:
-      strip_vlan (buffer, key, ah);
-      break;
-    case OFPAT_SET_DL_SRC:
-    case OFPAT_SET_DL_DST:
-      set_dl_addr (buffer, key, ah);
-      break;
-    case OFPAT_SET_NW_SRC:
-    case OFPAT_SET_NW_DST:
-      set_nw_addr (buffer, key, ah);
-      break;
-    case OFPAT_SET_TP_SRC:
-    case OFPAT_SET_TP_DST:
-      set_tp_port (buffer, key, ah);
-      break;
-    case OFPAT_SET_MPLS_LABEL:
-      set_mpls_label (buffer, key, ah);
-      break;
-    case OFPAT_SET_MPLS_EXP:
-      set_mpls_exp (buffer, key, ah);
-      break;
-    default:
-      break;
-    }
-}
 
 // Registers a PortlandSwitchNetDevice as a switch with the fabric manager.
 void
@@ -181,38 +53,6 @@ FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buff
 	swtch->ForwardControlInput(buffer);
 }
 
-// useless for now; can be used to understand how to build a buffer
-ofp_flow_mod*
-FabricManager::BuildFlow (sw_flow_key key, uint32_t buffer_id, uint16_t command, void* acts, size_t actions_len, int idle_timeout, int hard_timeout)
-{
-  ofp_flow_mod* ofm = (ofp_flow_mod*)malloc (sizeof(ofp_flow_mod) + actions_len);
-  ofm->header.version = OFP_VERSION;
-  ofm->header.type = OFPT_FLOW_MOD;
-  ofm->header.length = htons (sizeof(ofp_flow_mod) + actions_len);
-  ofm->command = htons (command);
-  ofm->idle_timeout = htons (idle_timeout);
-  ofm->hard_timeout = htons (hard_timeout);
-  ofm->buffer_id = htonl (buffer_id);
-  ofm->priority = OFP_DEFAULT_PRIORITY;
-  memcpy (ofm->actions,acts,actions_len);
-
-  ofm->match.wildcards = key.wildcards;                                 // Wildcard fields
-  ofm->match.in_port = key.flow.in_port;                                // Input switch port
-  memcpy (ofm->match.dl_src, key.flow.dl_src, sizeof ofm->match.dl_src); // Ethernet source address.
-  memcpy (ofm->match.dl_dst, key.flow.dl_dst, sizeof ofm->match.dl_dst); // Ethernet destination address.
-  ofm->match.dl_vlan = key.flow.dl_vlan;                                // Input VLAN OFP_VLAN_NONE;
-  ofm->match.dl_type = key.flow.dl_type;                                // Ethernet frame type ETH_TYPE_IP;
-  ofm->match.nw_proto = key.flow.nw_proto;                              // IP Protocol
-  ofm->match.nw_src = key.flow.nw_src;                                  // IP source address
-  ofm->match.nw_dst = key.flow.nw_dst;                                  // IP destination address
-  ofm->match.tp_src = key.flow.tp_src;                                  // TCP/UDP source port
-  ofm->match.tp_dst = key.flow.tp_dst;                                  // TCP/UDP destination port
-  ofm->match.mpls_label1 = key.flow.mpls_label1;                        // Top of label stack htonl(MPLS_INVALID_LABEL);
-  ofm->match.mpls_label2 = key.flow.mpls_label1;                        // Second label (if available) htonl(MPLS_INVALID_LABEL);
-
-  return ofm;
-}
-
 // Function to extract Packet type/action from the message received from switch
 uint8_t
 FabricManager::GetPacketType (BufferData buffer)
@@ -221,7 +61,8 @@ FabricManager::GetPacketType (BufferData buffer)
 }
 
 // generic function (no change required)
-TypeId FabricManager::GetTypeId (void)
+TypeId
+FabricManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::pld::FabricManager")
     .SetParent (Object)
@@ -235,131 +76,142 @@ TypeId FabricManager::GetTypeId (void)
   return tid;
 }
 
-
-// Unsure how to use it; will revise description
 void
-ExecuteActions (Ptr<OpenFlowSwitchNetDevice> swtch, uint64_t packet_uid, ofpbuf* buffer, sw_flow_key *key, const ofp_action_header *actions, size_t actions_len, int ignore_no_fwd)
+FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
-  NS_LOG_FUNCTION_NOARGS ();
-  /* Every output action needs a separate clone of 'buffer', but the common
-   * case is just a single output action, so that doing a clone and then
-   * freeing the original buffer is wasteful.  So the following code is
-   * slightly obscure just to avoid that. */
-  int prev_port;
-  size_t max_len = 0;     // Initialze to make compiler happy
-  uint16_t in_port = key->flow.in_port; // ntohs(key->flow.in_port);
-  uint8_t *p = (uint8_t *)actions;
+  PACKET_TYPE packet_type = GetPacketType(buffer);
+  switch (packet_type)
+  {
+    case PKT_MAC_REGISTER:
+    PMACRegister* message = (PMACRegister*) (buffer.message);
+    FabricManager_PMACRegisterHandler(message);
+    break;
 
-  prev_port = -1;
+    case PKT_ARP_REQUEST:
+    ARPRequest* message = (ARPRequest*) (buffer.message);
+    FabricManager_ARPRequestHandler(message, swtch);
+    break;
 
-  if (actions_len == 0)
-    {
-      NS_LOG_INFO ("No actions set to this flow. Dropping packet.");
-      return;
-    }
+    case PKT_ARP_RESPONSE:
+    NS_LOG_COND("PKT_ARP_RESPONSE is to be generated by FM and not consumed");
+    break;
 
-  /* The action list was already validated, so we can be a bit looser
-   * in our sanity-checking. */
-  while (actions_len > 0)
-    {
-      ofp_action_header *ah = (ofp_action_header *)p;
-      size_t len = htons (ah->len);
+    case PKT_ARP_FLOOD: // This is a packet type that the FM should send to core
+    NS_LOG_COND("PKT_ARP_FLOOD is to be generated by FM and not consumed");
+    break;
 
-      if (prev_port != -1)
-        {
-          swtch->DoOutput (packet_uid, in_port, max_len, prev_port, ignore_no_fwd);
-          prev_port = -1;
-        }
-
-      if (ah->type == htons (OFPAT_OUTPUT))
-        {
-          ofp_action_output *oa = (ofp_action_output *)p;
-
-          // port is now 32-bits
-          prev_port = oa->port; // ntohl(oa->port);
-          // prev_port = ntohs(oa->port);
-          max_len = ntohs (oa->max_len);
-        }
-      else
-        {
-          uint16_t type = ntohs (ah->type);
-          if (Action::IsValidType ((ofp_action_type)type)) // Execute a built-in OpenFlow action against 'buffer'.
-            {
-              Action::Execute ((ofp_action_type)type, buffer, key, ah);
-            }
-          else if (type == OFPAT_VENDOR)
-            {
-              ExecuteVendor (buffer, key, ah);
-            }
-        }
-
-      p += len;
-      actions_len -= len;
-    }
-
-  if (prev_port != -1)
-    {
-      swtch->DoOutput (packet_uid, in_port, max_len, prev_port, ignore_no_fwd);
-    }
+    default:
+    NS_LOG_COND("Wrong packet type detected : ReceiveFromSwitch Fabric Manager");
+    break;
+  }
 }
 
-// useless for now
-uint16_t
-ValidateActions (const sw_flow_key *key, const ofp_action_header *actions, size_t actions_len)
+void
+FabricManager::addPMACToTable (Ipv4Address ip, Mac48Address pmac)
 {
-  uint8_t *p = (uint8_t *)actions;
-  int err;
+  IpPMACTable[ip] = pmac;
+}
 
-  while (actions_len >= sizeof(ofp_action_header))
+
+Ipv4Address
+FabricManager::getIPforPMAC (Mac48Address pmac)
+{
+  it = IpPMACTable.begin();
+  for (it = IpPMACTable.begin(); it != IpPMACTable.end(); ++it)
+  {
+    if (it->second == pmac)
     {
-      ofp_action_header *ah = (ofp_action_header *)p;
-      size_t len = ntohs (ah->len);
-      uint16_t type;
-
-      /* Make there's enough remaining data for the specified length
-        * and that the action length is a multiple of 64 bits. */
-      if ((actions_len < len) || (len % 8) != 0)
-        {
-          return OFPBAC_BAD_LEN;
-        }
-
-      type = ntohs (ah->type);
-      if (Action::IsValidType ((ofp_action_type)type)) // Validate built-in OpenFlow actions.
-        {
-          err = Action::Validate ((ofp_action_type)type, len, key, ah);
-          if (err != ACT_VALIDATION_OK)
-            {
-              return err;
-            }
-        }
-      else if (type == OFPAT_VENDOR)
-        {
-          err = ValidateVendor (key, ah, len);
-          if (err != ACT_VALIDATION_OK)
-            {
-              return err;
-            }
-        }
-      else
-        {
-          return OFPBAC_BAD_TYPE;
-        }
-
-      p += len;
-      actions_len -= len;
+      return it->first;
     }
+  }
 
-  // Check if there's any trailing garbage.
-  if (actions_len != 0)
+  return IPv4Address("255.255.255.255");
+}
+
+bool
+FabricManager::isIPRegistered (Ipv4Address ip)
+{
+  it = IpPMACTable.find(ip);
+  return (it == IpPMACTable.end() ? false : true);
+}
+
+Mac48Address
+FabricManager::getPMACforIP (Ipv4Address ip)
+{
+  if (isIpRegistered(ip))
+  {
+    return IpPMACTable[ip];
+  }
+  else
+  {
+    return Mac48Address("ff:ff:ff:ff:ff:ff");
+  }
+}
+
+bool
+FabricManager::isPmacRegistered (Mac48Address pmac)
+{
+  Ipv4Address ip = getIPforPMAC(pmac);
+  return (ip == Ipv4Address("255.255.255.255") ? false : true);
+}
+
+void
+FabricManager::PMACRegisterHandler(PMACRegister* message)
+{
+  addPMACToTable(message->hostIP, message->PMACRegister);
+}
+
+void
+FabricManager::ARPRequestHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
+{
+  if (isIpRegistered(message->destIPAddress))
+  {
+    // IP address present
+    ARPResponse* msg = (ARPResponse*) malloc (sizeof(ARPResponse));
+    msg->srcIPAddress = message->srcIPAddress;
+    msg->srcPMACAddress = message->srcPMACAddress;
+    msg->destIPAddress = message->destIPAddress;
+    msg->destPMACAddress = getPMACforIP(message->destIPAddress);
+    ARPResponseHandler(msg, swtch);
+
+    // free the message struct
+    free(message);
+  } else {
+    // Miss in the store, flood it to core
+    FloodARPRequest((ARPFloodRequest *)message, swtch);
+  }
+}
+
+void
+FabricManager::ARPResponseHandler(ARPResponse* message, Ptr<PortlandSwitchNetDevice> swtch)
+{
+  BufferData buffer;
+  buffer.pkt_type = PKT_ARP_RESPONSE;
+  buffer.msg = message;	
+
+  SendToSwitch(swtch, buffer);
+}
+
+void
+FabricManager::FloodARPRequest(ARPFloodRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
+{
+  BufferData buffer;
+  buffer.pkt_type = PKT_ARP_FLOOD;
+  buffer.msg = message;
+
+  for (set<Ptr<PortlandSwitchNetDevice>>::iterator it = m_switches.begin(); it != m_switches.end(); it++)
+  {
+    if (*it->isCore() && *it != swtch)
     {
-      return OFPBAC_BAD_LEN;
+      SendToSwitch(*it, buffer);
     }
-
-  return ACT_VALIDATION_OK;
+  }
+  // no free
 }
 
-}
 
-}
+} // end pld namespace
+
+} // end ns3 namespace
 
 #endif // NS3_PORTLAND
