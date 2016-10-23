@@ -673,7 +673,7 @@ PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
 
 // Function to forward packet info to the fabric manager
 void
-PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t max_len, int reason)
+PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t max_len, PACKET_TYPE type)
 {
   NS_LOG_INFO ("Sending packet to fabric manager");
 
@@ -761,13 +761,13 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   uint16_t dst_pod = ((uint16_t) dst_pmac_buffer[0]) << 8 | dst_pmac_buffer[1];
   
   // if this device is core, downstream to dst_pod
-  if (m_device_type == 0)
+  if (m_device_type == CORE)
   {
     return dst_pod;
   }
   
   // if this device is aggregate: same pod -- downstream, otherwise -- upstream on random port to core
-  if (m_device_type == 1)
+  if (m_device_type == AGGREGATION)
   {
     // same pod -- downstream
     if (m_pod == dst_pod)
@@ -784,7 +784,7 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   }
   
   // if this device is edge: same pod and position -- downstream, otherwise -- upstream on random port to aggregate
-  if (m_device_type == 2)
+  if (m_device_type == EDGE)
   { 
     // same pod and position
     if (m_pod == dst_pod && m_position == dst_mac_buffer[2])
@@ -1134,58 +1134,37 @@ PortlandSwitchNetDevice::ReceiveEchoReply (const void *oh)
 
 // Main handler for incoming messages from controller; calls specialized body parsers depending on type of message
 int
-PortlandSwitchNetDevice::ForwardControlInput (const void *msg, size_t length)
+PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
 {
-  // Check encapsulated length.
-  ofp_header *oh = (ofp_header*) msg;
-  if (ntohs (oh->length) > length)
-    {
-      return -EINVAL;
-    }
-  assert (oh->version == OFP_VERSION);
+	int error = 0;
+	assert(buffer.message != NULL);
 
-  int error = 0;
+	// Figure out how to handle it.
+	switch (buffer.pkt_type) {
+    case PKT_ARP_RESPONSE:
+		ARPResponse* msg = (ARPResponse*)buffer.message;
+		if (m_device_type == EDGE) {
+			// XXX where do i get the original arp packet from own host??
+		} else { 
+			error = -EINVAL;
+		}
 
-  // Figure out how to handle it.
-  switch (oh->type)
-    {
-    case OFPT_FEATURES_REQUEST:
-      error = length < sizeof(ofp_header) ? -EFAULT : ReceiveFeaturesRequest (msg);
-      break;
-    case OFPT_GET_CONFIG_REQUEST:
-      error = length < sizeof(ofp_header) ? -EFAULT : ReceiveGetConfigRequest (msg);
-      break;
-    case OFPT_SET_CONFIG:
-      error = length < sizeof(ofp_switch_config) ? -EFAULT : ReceiveSetConfig (msg);
-      break;
-    case OFPT_PACKET_OUT:
-      error = length < sizeof(ofp_packet_out) ? -EFAULT : ReceivePacketOut (msg);
-      break;
-    case OFPT_FLOW_MOD:
-      error = length < sizeof(ofp_flow_mod) ? -EFAULT : ReceiveFlow (msg);
-      break;
-    case OFPT_PORT_MOD:
-      error = length < sizeof(ofp_port_mod) ? -EFAULT : ReceivePortMod (msg);
-      break;
-    case OFPT_STATS_REQUEST:
-      error = length < sizeof(ofp_stats_request) ? -EFAULT : ReceiveStatsRequest (msg);
-      break;
-    case OFPT_ECHO_REQUEST:
-      error = length < sizeof(ofp_header) ? -EFAULT : ReceiveEchoRequest (msg);
-      break;
-    case OFPT_ECHO_REPLY:
-      error = length < sizeof(ofp_header) ? -EFAULT : ReceiveEchoReply (msg);
-      break;
-    default:
-      SendErrorMsg ((ofp_error_type)OFPET_BAD_REQUEST, (ofp_bad_request_code)OFPBRC_BAD_TYPE, msg, length);
-      error = -EINVAL;
+		break;
+    case PKT_ARP_FLOOD:
+		// XXX marshall packet and Flood downstream
+
+		break;
+    case PKT_ARP_REGISTER:
+    case PKT_ARP_REQUEST:
+	default :
+		NS_LOG_DEBUG ("Incorrect message type received from FM");
+		error = -EINVAL;
     }
 
-  if (msg != 0)
-    {
-      free ((ofpbuf*)msg);
+	if (buffer.message != NULL) {
+		free (buffer.message);
     }
-  return error;
+	return error;
 }
 
 uint32_t
