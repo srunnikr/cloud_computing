@@ -673,10 +673,9 @@ PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
 
 // Function to forward packet info to the fabric manager
 void
-PortlandSwitchNetDevice::OutputControl (Ipv4Address srcIP,
-						Mac48Address srcPMAC,
-						Ipv4Address destIP, /* reqd only if action == PKT_ARP_REQUEST */
-						PACKET_TYPE action)
+PortlandSwitchNetDevice::OutputControl (Ipv4Address srcIP, Mac48Address srcPMAC,
+			Ipv4Address destIP, /* reqd only if action == PKT_ARP_REQUEST */
+			PACKET_TYPE action)
 {
 	BufferData buffer;
 	NS_LOG_INFO ("Sending arp_request packet to fabric manager");
@@ -832,7 +831,7 @@ PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint3
 
       if (send_to_fabric_manager)
         {
-          OutputControl (action, srcIP, srcPMAC, destIP);
+          OutputControl (srcIP, srcPMAC, destIP, action);
         }
     }
 
