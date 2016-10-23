@@ -316,7 +316,7 @@ private:
    * \param max_len The maximum number of bytes that the caller wants to be sent; a value of 0 indicates the entire packet should be sent.
    * \param reason Why the packet is being sent.
    */
-  void OutputControl (uint32_t packet_uid, int in_port, size_t max_len, PACKET_TYPE type);
+  void OutputControl (Ipv4Address srcIP, Mac48Address srcPMAC, Ipv4Address destIP, PACKET_TYPE action);
 
   /**
    * If an error message happened during the controller's request, send it to the controller.

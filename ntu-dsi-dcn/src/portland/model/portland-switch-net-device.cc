@@ -339,7 +339,7 @@ PortlandSwitchNetDevice::DoOutput (uint32_t packet_uid, int in_port, size_t max_
     }
   else
     {
-      OutputControl (packet_uid, in_port, max_len, OFPR_ACTION);
+      OutputControl(srcIP, srcPMAC, destIP, action);
     }
 }
 
@@ -631,7 +631,7 @@ PortlandSwitchNetDevice::OutputPort (uint32_t packet_uid, int in_port, int out_p
     }
   else if (out_port == FABRIC_MANAGER_PORT)
     {
-      OutputControl (packet_uid, in_port, 0, OFPR_ACTION);
+      OutputControl(srcIP, srcPMAC, destIP, action);
     }
   else if (out_port == OFPP_IN_PORT)
     {
@@ -673,28 +673,42 @@ PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
 
 // Function to forward packet info to the fabric manager
 void
-PortlandSwitchNetDevice::OutputControl (uint32_t packet_uid, int in_port, size_t max_len, PACKET_TYPE type)
+PortlandSwitchNetDevice::OutputControl (Ipv4Address srcIP,
+						Mac48Address srcPMAC,
+						Ipv4Address destIP, /* reqd only if action == PKT_ARP_REQUEST */
+						PACKET_TYPE action)
 {
-  NS_LOG_INFO ("Sending packet to fabric manager");
+	BufferData buffer;
+	NS_LOG_INFO ("Sending arp_request packet to fabric manager");
 
-  ofpbuf* buffer = m_packetData.find (packet_uid)->second.buffer;
-  size_t total_len = buffer->size;
-  if (packet_uid != std::numeric_limits<uint32_t>::max () && max_len != 0 && buffer->size > max_len)
-    {
-      buffer->size = max_len;
-    }
+	switch(action) {
+		case PKT_MAC_REGISTER:
+			PMACRegister *msg = (PMACRegister *) malloc (sizeof(PMACRegister));
+			msg->hostIP = srcIP;
+			msg->PMACAddress = srcPMAC;
 
-  ofp_packet_in *opi = (ofp_packet_in*)ofpbuf_push_uninit (buffer, offsetof (ofp_packet_in, data));
-  opi->header.version = OFP_VERSION;
-  opi->header.type    = OFPT_PACKET_IN;
-  opi->header.length  = htons (buffer->size);
-  opi->header.xid     = htonl (0);
-  opi->buffer_id      = htonl (packet_uid);
-  opi->total_len      = htons (total_len);
-  opi->in_port        = htons (in_port);
-  opi->reason         = reason;
-  opi->pad            = 0;
-  SendOpenflowBuffer (buffer);
+			buffer.type = action;
+			buffer.message = msg;
+			SendOpenflowBuffer (buffer);
+			break;
+
+		case PKT_ARP_REQUEST:
+			ARPRequest* msg = (ARPRequest *) malloc (sizeof(ARPRequest));
+			msg->srcIPAddress = srcIP;
+			msg->srcPMACAddress = srcPMAC;
+			msg->destIPAddress = destIP;
+			
+			buffer.type = action;
+			buffer.message = msg;
+			SendOpenflowBuffer (buffer);
+			break;
+
+		case PKT_ARP_RESPONSE:
+		case PKT_ARP_FLOOD:
+		default:
+			NS_LOG_COND("Invalid action requested from FM");
+
+	}
 }
 
 // useless for now; can be used for understanding buffer handing etc.
@@ -818,7 +832,7 @@ PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint3
 
       if (send_to_fabric_manager)
         {
-          OutputControl (packet_uid, port, m_missSendLen, OFPR_NO_MATCH);
+          OutputControl (action, srcIP, srcPMAC, destIP);
         }
     }
 
