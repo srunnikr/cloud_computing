@@ -95,20 +95,22 @@ typedef struct PMACRegister {
 } PMACRegister;
 
 typedef struct ARPRequest {
-    Ipv4Address requestedIPAddress;
-    Ipv4Address requestedSwitchAddress;
-    Mac48Address requestedSwitchPMACAddress;
+    Ipv4Address destIPAddress;
+    Ipv4Address srcIPAddress;
+    Mac48Address srcPMACAddress;
 } ARPRequest;
 
 typedef struct ARPResponse {
-	Ipv4Address responseIPAddress;
-    Mac48Address responseMACAddress;
+	Ipv4Address destIPAddress;
+	Ipv4Address destPMACAddress;
+	Ipv4Address srcIPAddress;
+    Mac48Address srcMACAddress;
 } ARPResponse;
 
 typedef struct ARPFloodRequest {
-    Ipv4Address ARPFloodIPAddress;
-    Ipv4Address ARPSrcIPAddress;
-    Mac48Address ARPSrcPMACAddress;
+    Ipv4Address destIPAddress;
+    Ipv4Address SrcIPAddress;
+    Mac48Address SrcPMACAddress;
 } ARPFloodIPAddress;
 
 /**
@@ -209,12 +211,17 @@ private:
     }
 
     void FabricManager_ARPRequestHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch) {
-        if (isIpRegistered(message->requestedIPAddress)) {
+        if (isIpRegistered(message->destIPAddress)) {
             // IP address present
             ARPResponse* msg = (ARPResponse*) malloc (sizeof(ARPResponse));
-			msg->responseIPAddress = message->requestedIPAddress;
-            msg->responseMACAddress = getPMACforIP(message->requestedIPAddress);
+			msg->srcIPAddress = message->srcIPAddress;
+			msg->srcPMACAddress = message->srcPMACAddress;
+			msg->destIPAddress = message->destIPAddress;
+            msg->destPMACAddress = getPMACforIP(message->destIPAddress);
             FabricManager_ARPResponseHandler(msg, swtch);
+
+			// free the message struct
+			free(message);
         } else {
             // Miss in the store, flood it to core
             FabricManager_FloodARPRequest(message, swtch);
@@ -240,6 +247,7 @@ private:
                 SendToSwitch(*it, buffer);
             }
         }
+		// no free
     }
 
 protected:

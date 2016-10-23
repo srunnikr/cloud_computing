@@ -1145,15 +1145,30 @@ PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
 		ARPResponse* msg = (ARPResponse*)buffer.message;
 		if (m_device_type == EDGE) {
 			// XXX where do i get the original arp packet from own host??
-		} else { 
+			ArpHeader arp;
+			arp.SetReply (msg->destPMACAddress, msg->destIPAddress,
+						  msg->srcPMACAddress, msg->srcIPAddress);
+
+			Ptr<Packet> packet = Create<Packet> ();
+			packet->AddHeader(arp);
+			Send (packet, msg->srcPMACAddress, 0x0806 /* ArpL3Protocol::PROT_NUMBER = 0x0806 */);
+		} else {
+			// non-edge switches shouldn't receive ARPRequest from FM.
 			error = -EINVAL;
 		}
 
 		break;
+
     case PKT_ARP_FLOOD:
 		// XXX marshall packet and Flood downstream
-
+		if (m_device_type == CORE) {
+			// who should be the src for this ARPRequest??	
+		} else {
+			// non-core switches shouldn't recieve flood request from FM.
+			error = -EINVAL;
+		}
 		break;
+
     case PKT_ARP_REGISTER:
     case PKT_ARP_REQUEST:
 	default :
