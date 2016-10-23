@@ -842,6 +842,66 @@ PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint3
 }
 
 void
+PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int port)
+{
+  // port checking
+  if (port > (k / 2))
+  {
+    NS_LOG_INFO("Illegal port");
+    return;
+  }
+  
+  Mac48Address src_amac = Mac48Address.ConvertFrom(metadata.src_mac);
+  Ipv4Address dst_ip = metadata.dst_ip;
+  Ipv4Address src_ip = metadata.src_ip;
+  Mac48Address src_pmac;
+  
+  // check for src_PMAC existence
+  if (m_table.ContainsIP(src_ip))
+  {
+    src_pmac = m_table.FindPMAC(src_ip);
+  }
+  // else create src_ip - src_PMAC entry
+  else
+  {
+    uint8_t src_pmac_buffer[6];
+    
+    // assigning src PMAC address
+    src_pmac_buffer[0] = 0;
+    src_pmac_buffer[1] = m_pod;
+    src_pmac_buffer[2] = m_position;
+    src_pmac_buffer[3] = port;
+    src_pmac_buffer[4] = 0;
+    src_pmac_buffer[5] = 1;
+    
+    src_pmac.CopyFrom(src_pmac_buffer);
+    
+    // adding entry to the table
+    m_table.Add(src_amac, src_pmac, port);
+    
+    // register this entry with fabric manager
+    OutputControl(src_ip, src_pmac, 0, PKT_MAC_REGISTER);
+  }
+  
+  // if the edge switch has this IP-PMAC entry
+  // send ARP response to the host
+  if (m_table.ContainsIP(dst_ip))
+  {
+    Mac48Address dst_pmac = m_table.FindPMAC(dst_ip); 
+    ArpHeader arp;
+ 		arp.SetReply (dst_pmac, dst_ip, src_pmac, src_ip);
+	  Ptr<Packet> packet = Create<Packet> ();
+	  packet->AddHeader(arp);
+	  Send (packet, src_pmac, 0x0806);
+  }
+  // else send ARP request to the fabric manager
+  else
+  {
+    OutputControl(src_ip, src_pmac, dst_ip, PKT_ARP_REQUEST);
+  }
+}
+
+void
 PortlandSwitchNetDevice::RunThroughPMACTable (uint32_t packet_uid, int port, bool send_to_fabric_manager)
 {
   ofi::SwitchPacketMetadata data = m_packetData.find (packet_uid)->second;

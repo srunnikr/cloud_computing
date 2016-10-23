@@ -379,6 +379,7 @@ private:
    * \param send_to_controller If set, sends to the controller if the packet isn't matched.
    */
   void RunThroughPMACTable (uint32_t packet_uid, int port, bool send_to_fabric_manager = true);
+  void RunThroughPMACTable (SwitchPacketMetadata metadata, int port);
 
   /**
    * Gets the output port index based on the destination PMAC address
