@@ -1232,21 +1232,24 @@ PortlandSwitchNetDevice::GetSwitchPortIndex (ofi::Port p)
 }
 
 void
-PortlandSwitchNetDevice::PMACTable::Add(const Mac48Address& amac, const Mac48Address& pmac, uint32_t port)
+PortlandSwitchNetDevice::PMACTable::Add(const Mac48Address& pmac, const Mac48Address& amac, const Ipv4Address ip_address, const uint32_t port)
 {
-  port_mapping.insert(std::make_pair(pmac, std::make_pair(amac, port)));
-  mac_mapping.insert(std::make_pair(amac, pmac));
+  PMACEntry entry;
+  entry.pmac = pmac;
+  entry.amac = amac;
+  entry.ip_address = ip_address;
+  entry.port = port;
+  mapping.insert(std::make_pair(pmac, entry));
 }
 
 void
 PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
 {
-  mac_mapping.erase(amac);
-  std::map<Mac48Address, std::pair<Mac48Address, uint32_t>>::iterator it = port_mapping.begin();
+  std::map<Mac48Address, PMACEntry>::iterator it = mapping.begin();
   bool found = false;
-  while(it != port_mapping.end())
+  while(it != mapping.end())
   {
-    if ((it->second)->first == amac)
+    if ((it->second).amac == amac)
     {
       found = true;
       break;
@@ -1255,26 +1258,61 @@ PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
 
   if (found == true)
   {
-    port_mapping.erase(it);
+    mapping.erase(it);
   }
 }
 
 uint32_t
-PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac)
+PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac) const
 {
-  return port_mapping[pmac]->second;
+  uint32_t port;
+  auto pair = example.find(pmac);
+  if (pair != example.end()) {
+    return (pair->second).port;
+  }
+
+  return 0;
+}
+
+uint32_t
+PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) const
+{
+  std::map<Mac48Address, PMACEntry>::iterator it = mapping.begin();
+  while(it != mapping.end())
+  {
+    if ((it->second).ip_address == ip_address)
+    {
+      return (it->second).port;
+    }
+  }
+
+  return 0;
 }
 
 Mac48Address
-PortlandSwitchNetDevice::PMACTable::FindAMAC(const Mac48Address& pmac)
+PortlandSwitchNetDevice::PMACTable::FindAMAC(const Mac48Address& pmac) const
 {
-  return port_mapping[pmac]->first;
+  auto pair = example.find(pmac);
+  if (pair != example.end()) {
+    return (pair->second).amac;
+  }
+
+    return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
 Mac48Address
-PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac)
+PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
 {
-  return mac_mapping[amac];
+  std::map<Mac48Address, PMACEntry>::iterator it = mapping.begin();
+  while(it != mapping.end())
+  {
+    if ((it->second).ip_amac == amac)
+    {
+      return it->first;
+    }
+  }
+
+  return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
 

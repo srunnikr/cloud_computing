@@ -220,15 +220,21 @@ protected:
   class PMACTable
   {
     public:
-      void Add(const Mac48Address& amac, const Mac48Address& pmac, uint32_t port);
+      void Add(const Mac48Address& pmac, const Mac48Address& amac, const Ipv4Address ip_address, const uint32_t port);
       void Remove(const Mac48Address& amac);
-      uint32_t FindPort(const Mac48Address& pmac);
-      Mac48Address FindAMAC(const Mac48Address& pmac);
-      Mac48Address FindPMAC(const Mac48Address& amac);
+      uint32_t FindPort(const Mac48Address& pmac) const;
+      uint32_t FindPort(const Ipv4Address& ip_address) const;
+      Mac48Address FindAMAC(const Mac48Address& pmac) const;
+      Mac48Address FindPMAC(const Mac48Address& amac) const;
 
     private:
-      std::map<Mac48Address, std::pair<Mac48Address, uint32_t>> port_mapping; // PMAC -> AMAC, host port mapping
-      std::map<Mac48Address, Mac48Address> mac_mapping; // AMAC -> PMAC mapping
+      typedef struct PMACEntry {
+        Mac48Address pmac;
+        Mac48Address amac;
+        Ipv4Address ip_address;
+        uint32_t port;
+      } PMACEntry;
+      std::map<Mac48Address, PMACEntry> mapping; // PMAC -> <AMAC, IP, Port> mapping
   };
 
   virtual void DoDispose (void);
