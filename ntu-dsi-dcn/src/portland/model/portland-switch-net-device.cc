@@ -892,7 +892,7 @@ PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int po
  		arp.SetReply (dst_pmac, dst_ip, src_pmac, src_ip);
 	  Ptr<Packet> packet = Create<Packet> ();
 	  packet->AddHeader(arp);
-	  Send (packet, src_pmac, 0x0806);
+	  Send (packet, src_pmac, ArpL3Protocol::PROT_NUMBER);
   }
   // else send ARP request to the fabric manager
   else
@@ -1225,7 +1225,7 @@ PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
 
 			Ptr<Packet> packet = Create<Packet> ();
 			packet->AddHeader(arp);
-			this.Send(packet, msg->srcPMACAddress, 0x0806 /* ArpL3Protocol::PROT_NUMBER = 0x0806 */);
+			this.Send(packet, msg->srcPMACAddress, ArpL3Protocol::PROT_NUMBER);
 		} else {
 			// non-edge switches shouldn't receive ARPRequest from FM.
 			error = -EINVAL;
@@ -1243,7 +1243,7 @@ PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
 							GetBroadcast (), msg->destIPAddess);
 
 			packet->AddHeader (arp);
-			this.Send(packet, GetBroadcast(), 0x0806 /* ArpL3Protocol::PROT_NUMBER = 0x0806 */);
+			this.Send(packet, GetBroadcast(), ArpL3Protocol::PROT_NUMBER);
 		} else {
 			// non-core switches shouldn't recieve flood request from FM.
 			error = -EINVAL;
