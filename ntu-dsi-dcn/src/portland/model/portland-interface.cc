@@ -65,13 +65,8 @@ TypeId
 FabricManager::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::pld::FabricManager")
-    .SetParent (Object)
     .AddConstructor<FabricManager> ()
-    .AddAttribute ("ExpirationTime",
-                   "Time it takes for learned MAC state entry to expire.",
-                   TimeValue (Seconds (0)),
-                   MakeTimeAccessor (&FabricManager::m_expirationTime),
-                   MakeTimeChecker ())
+    //.SetParent (Object)
   ;
   return tid;
 }
@@ -84,12 +79,12 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData
   {
     case PKT_MAC_REGISTER:
     PMACRegister* message = (PMACRegister*) (buffer.message);
-    FabricManager_PMACRegisterHandler(message);
+    PMACRegisterHandler(message);
     break;
 
     case PKT_ARP_REQUEST:
     ARPRequest* message = (ARPRequest*) (buffer.message);
-    FabricManager_ARPRequestHandler(message, swtch);
+    ARPRequestHandler(message, swtch);
     break;
 
     case PKT_ARP_RESPONSE:

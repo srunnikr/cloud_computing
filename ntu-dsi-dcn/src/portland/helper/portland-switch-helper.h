@@ -29,7 +29,6 @@ namespace ns3 {
 
 class Node;
 class AttributeValue;
-class Controller;
 
 /**
  * \brief Add capability to switch multiple LAN segments (IEEE 802.1D bridging)
@@ -68,8 +67,8 @@ public:
   Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager);
   
   NetDeviceContainer
-  Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager,
-	pld::PortlandSwitchType device_type, uint8_t pod, uint8_t position);
+  Install (Ptr<Node> node, NetDeviceContainer lowerDevices, NetDeviceContainer upperDevices, Ptr<ns3::pld::FabricManager> fabric_manager,
+	nPortlandSwitchType device_type, uint8_t pod, uint8_t position);
   
   /**
    * This method creates an ns3::PortlandSwitchNetDevice with the attributes

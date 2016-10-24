@@ -18,6 +18,7 @@
 //#ifdef NS3_PORTLAND
 
 #include <cstdlib>
+#include <cstdint>
 
 #include "portland-switch-net-device.h"
 #include "ns3/udp-l4-protocol.h"
@@ -56,9 +57,7 @@ PortlandSwitchNetDevice::GetSerialNumber ()
 static uint64_t
 GenerateId ()
 {
-  uint8_t ea[ETH_ADDR_LEN];
-  eth_addr_random (ea);
-  return eth_addr_to_uint64 (ea);
+  return (uint64_t)(rand() % UINT64_MAX);
 }
 
 TypeId
@@ -71,25 +70,24 @@ PortlandSwitchNetDevice::GetTypeId (void)
     .AddAttribute ("ID",
                    "The identification of the PortlandSwitchNetDevice.",
                    UintegerValue (GenerateId ()),
-                   MakeUintegerAccessor (&PortlandFlowSwitchNetDevice::m_id),
+                   MakeUintegerAccessor (&PortlandSwitchNetDevice::m_id),
                    MakeUintegerChecker<uint64_t> ())
   ;
   return tid;
 }
 
 // PortlandSwitchNetDevice constructor
-PortlandSwitchNetDevice::PortlandSwitchNetDevice (PortlandSwitchType device_type, uint8_t pod, uint8_t position)
+PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   : m_node (0),
     m_ifIndex (0),
     m_mtu (0xffff),
-    m_device_type(3),
+    m_device_type(EDGE),
     m_pod(0),
     m_position(0),
     m_packetData(),
     m_upper_ports(),
     m_lower_ports(),
     m_fabricManager(0),
-    m_lookupDelay(0),
     m_table()
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -98,10 +96,6 @@ PortlandSwitchNetDevice::PortlandSwitchNetDevice (PortlandSwitchType device_type
 
   m_fabricManager = 0;
   
-  m_device_type = device_type;
-  m_pod = pod;
-  m_position = position;
-
   m_upper_ports.reserve (100);
   m_lower_ports.reserve (100);
 }
@@ -171,28 +165,21 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort, bool is_upper
       m_address = Mac48Address::ConvertFrom (switchPort->GetAddress ());
     }
 
-  if (m_ports.size () < DP_MAX_PORTS)
+    pld::Port p;
+    p.netdev = switchPort;
+    if (is_upper)
     {
-      pld::Port p;
-      p.netdev = switchPort;
-      if (is_upper)
-      {
-        m_upper_ports.push_back (p);
-      } 
-      else
-      {
-        m_lower_ports.push_back (p);
-      }
+      m_upper_ports.push_back (p);
+    } 
+    else
+    {
+      m_lower_ports.push_back (p);
+    }
 
-      NS_LOG_DEBUG ("RegisterProtocolHandler for " << switchPort->GetInstanceTypeId ().GetName ());
-      m_node->RegisterProtocolHandler (MakeCallback (&PortlandSwitchNetDevice::ReceiveFromDevice, this),
-                                       0, switchPort, true);
-      m_channel->AddChannel (switchPort->GetChannel ());
-    }
-  else
-    {
-      return EXFULL;
-    }
+    NS_LOG_DEBUG ("RegisterProtocolHandler for " << switchPort->GetInstanceTypeId ().GetName ());
+    m_node->RegisterProtocolHandler (MakeCallback (&PortlandSwitchNetDevice::ReceiveFromDevice, this),
+                                     0, switchPort, true);
+    m_channel->AddChannel (switchPort->GetChannel ());
 
   return 0;
 }
@@ -209,6 +196,34 @@ PortlandSwitchNetDevice::GetDeviceType (void) const
 {
   NS_LOG_FUNCTION_NOARGS ();
   return m_device_type;
+}
+
+void
+PortlandSwitchNetDevice::SetPod (const uint8_t pod)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  m_pod = pod;
+}
+
+uint8_t
+PortlandSwitchNetDevice::GetPod (void) const
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  return m_pod;
+}
+
+void
+PortlandSwitchNetDevice::SetPosition (const uint8_t position)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  m_position = position;
+}
+
+uint8_t
+PortlandSwitchNetDevice::GetPosition (void) const
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  return m_position;
 }
 
 void
@@ -632,10 +647,10 @@ PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, int out_po
 }
 
 
-BufferData
-PortlandSwitchNetDevice::SendBufferToFabricManager(BufferData request_buffer)
+pld::BufferData
+PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffer)
 {
-  BufferData response_buffer;
+  pld::BufferData response_buffer;
   if (m_fabricManager != 0)
   {
     m_fabricManager->ReceiveFromSwitch(this, buffer);
@@ -645,7 +660,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(BufferData request_buffer)
 }
 
 void
-PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(BufferData request_buffer)
+PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_buffer)
 {
   if (request_buffer.type == PKT_ARP_FLOOD)
   {
@@ -668,7 +683,7 @@ PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address sr
   msg->hostIP = src_ip;
   msg->PMACAddress = src_pmac;
   
-  BufferData buffer;
+  pld::BufferData buffer;
   buffer.type = PKT_MAC_REGISTER;
   buffer.message = msg;
 
@@ -683,11 +698,11 @@ PortlandSwitchNetDevice::QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_
   msg->srcPMACAddress = src_pmac;
   msg->destIPAddress = dst_ip;
   
-  BufferData buffer;
+  pld::BufferData buffer;
   buffer.type = PKT_ARP_REQUEST;
   buffer.message = msg;
 
-  BufferData response = SendBufferToFabricManager(buffer);
+  pld::BufferData response = SendBufferToFabricManager(buffer);
   ARPResponse* arp_resp = (ARPResponse *)(response.message);
   Mac48Address dst_pmac = arp_resp->destPMACAddress;
   
@@ -952,7 +967,11 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
   return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
-
+void
+PortlandSwitchNetDevice::PMACTable::clear(void)
+{
+  mapping.clear();
+}
 
 } // namespace ns3
 

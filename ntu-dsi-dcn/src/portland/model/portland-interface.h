@@ -44,13 +44,14 @@ namespace ns3 {
 class PortlandSwitchNetDevice;
 
 namespace pld {
-
+/*
 enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
   };
-  
+*/
+
 /**
  * \brief Port and its metadata.
  */
@@ -61,7 +62,7 @@ struct Port
             tx_packets (0),
             rx_bytes (0),
             tx_bytes (0),
-            tx_dropped (0),
+            tx_dropped (0)
   {
   }
 
@@ -127,7 +128,6 @@ public:
 
     ~FabricManager () {
         m_switches.clear ();
-        m_learnState.clear ();
     }
 
   /**
@@ -172,9 +172,6 @@ private:
     void FloodARPRequest(ARPFloodRequest* message, Ptr<PortlandSwitchNetDevice> swtch);
 
 protected:
-    Time m_expirationTime;                ///< Time it takes for learned MAC state entry/created flow to expire.
-    typedef std::map<Mac48Address, LearnedState> LearnState_t;
-    LearnState_t m_learnState;
   /**
    * \internal
    *
@@ -193,10 +190,6 @@ protected:
 
     typedef std::set<Ptr<PortlandSwitchNetDevice> > Switches_t;
     Switches_t m_switches;  ///< The collection of switches registered to this controller.
-
-    struct LearnedState {
-        uint32_t port;                      ///< Learned port.
-    };
 };
 
 }

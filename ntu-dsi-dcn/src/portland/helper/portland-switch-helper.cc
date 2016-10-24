@@ -60,31 +60,41 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pl
   for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
     {
       NS_LOG_INFO ("**** Add SwitchPort " << *i);
-      dev->AddSwitchPort (*i);
+      dev->AddSwitchPort (*i, false);
     }
   return devs;
 }
 
 NetDeviceContainer
-PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager, 
-                                pld::PortlandSwitchType device_type, uint8_t pod, uint8_t position)
+PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer lowerDevices, NetDeviceContainer upperDevices, Ptr<ns3::pld::FabricManager> fabric_manager, 
+                                PortlandSwitchType device_type, uint8_t pod, uint8_t position)
 {
   NS_LOG_FUNCTION_NOARGS ();
   NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
 
   NetDeviceContainer devs;
-  Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> (device_type, pod, position);
+  Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> ();
+  dev->SetDeviceType(device_type);
+  dev->SetPod(pod);
+  dev->SetPosition(position);
   devs.Add (dev);
   node->AddDevice (dev);
 
   NS_LOG_INFO ("**** Set up Fabric Manager");
   dev->SetFabricManager (fabric_manager);
 
-  for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
+  for (NetDeviceContainer::Iterator i = lowerDevices.Begin (); i != lowerDevices.End (); ++i)
     {
       NS_LOG_INFO ("**** Add SwitchPort " << *i);
-      dev->AddSwitchPort (*i);
+      dev->AddSwitchPort (*i, false);
     }
+
+  for (NetDeviceContainer::Iterator i = upperDevices.Begin (); i != upperDevices.End (); ++i)
+    {
+      NS_LOG_INFO ("**** Add SwitchPort " << *i);
+      dev->AddSwitchPort (*i, true);
+    }
+ 
   return devs;
 }
 

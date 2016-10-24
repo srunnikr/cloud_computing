@@ -80,6 +80,13 @@ namespace ns3 {
  * call.
  */
 
+enum PortlandSwitchType {
+    EDGE = 1,
+    AGGREGATION,
+    CORE
+  };
+
+
 /**
  * \ingroup openflow 
  * \brief A net device that switches multiple LAN segments via an OpenFlow-compatible flow table
@@ -116,7 +123,7 @@ public:
   PortlandSwitchNetDevice ();
   
   // Constructor -- with device_type, pod and position
-  PortlandSwitchNetDevice(pld::PortlandSwitchType device_type, uint8_t  pod, uint8_t position);
+  PortlandSwitchNetDevice(PortlandSwitchType& device_type, uint8_t& pod, uint8_t& position);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
@@ -142,7 +149,7 @@ public:
    * \return 0 if everything's ok, otherwise an error number.
    * \sa #EXFULL
    */
-  int AddSwitchPort (Ptr<NetDevice> switchPort);
+  int AddSwitchPort (Ptr<NetDevice> switchPort, bool is_upper);
   
   /**
    * \brief Called from the OpenFlow Interface to output the Packet on either a Port or the Controller
@@ -162,7 +169,7 @@ public:
    * \param length Length of the message.
    * \return 0 if everything's ok, otherwise an error number.
    */
-  int ForwardControlInput (BufferData buffer);
+  int ForwardControlInput (pld::BufferData buffer);
 
   /**
    * \return Number of switch ports attached to this switch.
@@ -181,9 +188,18 @@ public:
    */
   pld::Port GetSwitchPort (uint32_t n) const;
 
-  void SetDeviceType (const pld::PortlandSwitchType device_type);
+  void SetDeviceType (const PortlandSwitchType device_type);
 
-  pld::PortlandSwitchType GetDeviceType (void) const;
+  PortlandSwitchType GetDeviceType (void) const;
+
+  void SetPod (const uint8_t pod);
+
+  uint8_t GetPod (void) const;
+
+  void SetPosition (const uint8_t position);
+
+  uint8_t GetPosition (void) const;
+
 
   // From NetDevice
   virtual void SetIfIndex (const uint32_t index);
@@ -222,6 +238,7 @@ protected:
       int FindPort(const Ipv4Address& ip_address) const;
       Mac48Address FindAMAC(const Mac48Address& pmac) const;
       Mac48Address FindPMAC(const Mac48Address& amac) const;
+      void clear();
 
     private:
       typedef struct PMACEntry {
@@ -283,7 +300,7 @@ private:
   
   /// These are to be set during initialization of the device
   /// Used in PortlandSwitchNetDevice::GetOutputPort
-  pld::PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
+  PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 
