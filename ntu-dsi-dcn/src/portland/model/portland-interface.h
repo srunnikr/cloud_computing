@@ -70,12 +70,14 @@ struct Port
  */
 struct SwitchPacketMetadata
 {
-  uint16_t protocol_number;      ///< Protocol type of the Packet when the Packet is received
-  Address src_mac;             ///< Source Address of the Packet when the Packet is received
-  Address dst_mac;             ///< Destination Address of the Packet when the Packet is received.
-  Ipv4Address src_ip;      ///< Source IPv4 Address of the Packet when the Packet is received
-  Ipv4Address dst_ip;      ///< Destination IPv4 Address of the Packet when the Packet is received.
-  bool is_arp_request;      ///< True if it is an ARP Request; False otherwise.
+  Ptr<Packet> packet;
+  uint16_t protocol_number;     ///< Protocol type of the Packet when the Packet is received
+  Mac48Address src_amac;        ///< Actual Source MAC Address of the host when the Packet is received
+  Mac48Address src_pmac;        ///< Psuedo Source MAC Address of the host
+  Mac48Address dst_pmac;        ///< Destination MAC Address of the Packet when the Packet is received.
+  Ipv4Address src_ip;           ///< Source IPv4 Address of the Packet when the Packet is received
+  Ipv4Address dst_ip;           ///< Destination IPv4 Address of the Packet when the Packet is received.
+  bool is_arp_request;          ///< True if it is an ARP Request; False otherwise.
 };
 
 // Message information for fabric manager

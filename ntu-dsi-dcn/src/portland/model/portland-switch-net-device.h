@@ -222,8 +222,8 @@ protected:
     public:
       void Add(const Mac48Address& pmac, const Mac48Address& amac, const Ipv4Address ip_address, const uint32_t port);
       void Remove(const Mac48Address& amac);
-      uint32_t FindPort(const Mac48Address& pmac) const;
-      uint32_t FindPort(const Ipv4Address& ip_address) const;
+      int FindPort(const Mac48Address& pmac) const;
+      int FindPort(const Ipv4Address& ip_address) const;
       Mac48Address FindAMAC(const Mac48Address& pmac) const;
       Mac48Address FindPMAC(const Mac48Address& amac) const;
 
@@ -232,7 +232,7 @@ protected:
         Mac48Address pmac;
         Mac48Address amac;
         Ipv4Address ip_address;
-        uint32_t port;
+        uint8_t port;
       } PMACEntry;
       std::map<Mac48Address, PMACEntry> mapping; // PMAC -> <AMAC, IP, Port> mapping
   };
@@ -257,41 +257,12 @@ protected:
    * \param packet The packet.
    * \param src The source address.
    * \param dst The destination address.
-   * \param mtu The Maximum Transmission Unit.
    * \param protocol The protocol defining the packet.
    * \return The OpenFlow Buffer created from the packet.
    */
-  ofpbuf * BufferFromPacket (Ptr<const Packet> packet, Address src, Address dst, int mtu, uint16_t protocol);
+  SwitchPacketMetadata MetadataFromPacket (Ptr<const Packet> packet, Address src, Address dst, uint16_t protocol);
 
 private:
-  /**
-   * Add a flow.
-   *
-   * \sa #ENOMEM, #ENOBUFS, #ESRCH
-   *
-   * \param ofm The flow data to add.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int AddFlow (const ofp_flow_mod *ofm);
-
-  /**
-   * Modify a flow.
-   *
-   * \param ofm The flow data to modify.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int ModFlow (const ofp_flow_mod *ofm);
-
-  /**
-   * Send packets out all the ports except the originating one
-   *
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param in_port The index of the port the Packet was initially received on. This port doesn't forward when flooding.
-   * \param flood If true, don't send out on the ports with flooding disabled.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int OutputAll (uint32_t packet_uid, int in_port, bool flood);
-
   /**
    * Sends a copy of the Packet over the provided output port
    *
@@ -300,142 +271,10 @@ private:
   void OutputPacket (uint32_t packet_uid, int out_port);
 
   /**
-   * Seeks to send out a Packet over the provided output port. This is called generically
-   * when we may or may not know the specific port we're outputting on. There are many
-   * pre-set types of port options besides a Port that's hooked to our OpenFlowSwitchNetDevice.
-   * For example, it could be outputting as a flood, or seeking to output to the controller.
-   *
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param in_port The index of the port the Packet was initially received on.
-   * \param out_port The port we want to output on.
-   * \param ignore_no_fwd If true, Ports that are set to not forward are forced to forward.
-   */
-  void OutputPort (uint32_t packet_uid, int in_port, int out_port, bool ignore_no_fwd);
-
-  /**
-   * Sends a copy of the Packet to the controller. If the packet can be saved
-   * in an OpenFlow buffer, then only the first 'max_len' bytes of the packet
-   * are sent; otherwise, all of the packet is sent.
-   *
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param in_port The index of the port the Packet was initially received on.
-   * \param max_len The maximum number of bytes that the caller wants to be sent; a value of 0 indicates the entire packet should be sent.
-   * \param reason Why the packet is being sent.
-   */
-  void OutputControl (Ipv4Address srcIP, Mac48Address srcPMAC, Ipv4Address destIP, PACKET_TYPE action);
-
-  /**
-   * If an error message happened during the controller's request, send it to the controller.
-   *
-   * \param type The type of error.
-   * \param code The error code.
-   * \param data The faulty data that lead to the error.
-   * \param len The length of the faulty data.
-   */
-  void SendErrorMsg (uint16_t type, uint16_t code, const void *data, size_t len);
-
-  /**
-   * Send a reply about this OpenFlow switch's features to the controller.
-   *
-   * List of capabilities and actions to support are found in the specification
-   * <www.openflowswitch.org/documents/openflow-spec-v0.8.9.pdf>.
-   *
-   * Supported capabilities and actions are defined in the openflow interface.
-   * To recap, flow status, flow table status, port status, virtual port table
-   * status can all be requested. It can also transmit over multiple physical
-   * interfaces.
-   *
-   * It supports every action: outputting over a port, and all of the flow table
-   * manipulation actions: setting the 802.1q VLAN ID, the 802.1q priority,
-   * stripping the 802.1 header, setting the Ethernet source address and destination,
-   * setting the IP source address and destination, setting the TCP/UDP source address
-   * and destination, and setting the MPLS label and EXP bits.
-   *
-   * \attention Capabilities STP (Spanning Tree Protocol) and IP packet
-   * reassembly are not currently supported.
-   *
-   */
-  void SendFeaturesReply ();
-
-  /**
-   * Send a reply to the controller that a specific flow has expired.
-   *
-   * \param flow The flow that expired.
-   * \param reason The reason for sending this expiration notification.
-   */
-  void SendFlowExpired (sw_flow *flow, enum ofp_flow_expired_reason reason);
-
-  /**
-   * Send a message to the controller. This method is the key
-   * to communicating with the controller, it does the actual
-   * sending. The other Send methods call this one when they
-   * are ready to send a message.
-   *
-   * \param buffer Buffer of the message to send out.
-   * \return 0 if successful, otherwise an error number.
-   */
-  int SendOpenflowBuffer (ofpbuf *buffer);
-
-  /**
-   * Run the packet through the flow table. Looks up in the flow table for a match.
-   * If it doesn't match, it forwards the packet to the registered controller, if the flag is set.
-   *
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param port The port this packet was received over.
-   * \param send_to_controller If set, sends to the controller if the packet isn't matched.
-   */
-  void RunThroughPMACTable (uint32_t packet_uid, int port, bool send_to_fabric_manager = true);
-  void RunThroughPMACTable (SwitchPacketMetadata metadata, int port);
-
-  /**
    * Gets the output port index based on the destination PMAC address
    */
   uint8_t GetOutputPort(Mac48Address dst_pmac);
   
-  /**
-   * Called by RunThroughFlowTable on a scheduled delay
-   * to account for the flow table lookup overhead.
-   *
-   * \param key Matching key to look up in the flow table.
-   * \param buffer Buffer of the packet received.
-   * \param packet_uid Packet UID; used to fetch the packet and its metadata.
-   * \param port The port the packet was received over.
-   * \param send_to_controller 
-   */
-  void FlowTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabric_manager);
-
-  /**
-   * Generates an OpenFlow reply message based on the type.
-   *
-   * \param openflow_len Length of the reply to make.
-   * \param type Type of reply message to make.
-   * \param bufferp Message buffer; used to make the reply.
-   * \return The OpenFlow reply message.
-   */
-  void* MakeOpenflowReply (size_t openflow_len, uint8_t type, ofpbuf **bufferp);
-
-  /**
-   * \name Receive Methods
-   *
-   * Actions to do when a specific OpenFlow message/packet is received
-   *
-   * @{
-   */
-  /**
-   * \param msg The OpenFlow message received.
-   * \return 0 if everything's ok, otherwise an error number.
-   */
-  int ReceiveFeaturesRequest (const void *msg);
-  int ReceiveGetConfigRequest (const void *msg);
-  int ReceiveSetConfig (const void *msg);
-  int ReceivePacketOut (const void *msg);
-  int ReceiveFlow (const void *msg);
-  int ReceivePortMod (const void *msg);
-  int ReceiveStatsRequest (const void *oh);
-  int ReceiveEchoRequest (const void *oh);
-  int ReceiveEchoReply (const void *oh);
-  /**@}*/
-
   /// Callbacks
   NetDevice::ReceiveCallback m_rxCallback;
   NetDevice::PromiscReceiveCallback m_promiscRxCallback;
@@ -462,7 +301,6 @@ private:
   Ptr<pld::FabricManager> m_fabricManager;    ///< Connection to fabric manager.
 
   uint64_t m_id;                        ///< Unique identifier for this switch, needed for OpenFlow
-  Time m_lookupDelay;                   ///< Flow Table Lookup Delay [overhead].
 
   // TODO: replace this with PMAC table
   PMACTable m_table;             ///< PMAC Table; AMAC-IP <-> inport.

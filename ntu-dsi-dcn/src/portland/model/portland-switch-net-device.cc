@@ -17,6 +17,8 @@
  */
 #ifdef NS3_PORTLAND
 
+#include <cstdlib>
+
 #include "portland-switch-net-device.h"
 #include "ns3/udp-l4-protocol.h"
 #include "ns3/tcp-l4-protocol.h"
@@ -30,7 +32,7 @@ NS_OBJECT_ENSURE_REGISTERED (PortlandSwitchNetDevice);
 const char *
 PortlandSwitchNetDevice::GetManufacturerDescription ()
 {
-  return "The ns-3 team";
+  return "The UCSD cloud computing team";
 }
 
 const char *
@@ -67,25 +69,10 @@ PortlandSwitchNetDevice::GetTypeId (void)
     .SetGroupName ("Portland")
     .AddConstructor<PortlandSwitchNetDevice> ()
     .AddAttribute ("ID",
-                   "The identification of the PortlandSwitchNetDevice/Datapath, needed for OpenFlow compatibility.",
+                   "The identification of the PortlandSwitchNetDevice.",
                    UintegerValue (GenerateId ()),
                    MakeUintegerAccessor (&PortlandFlowSwitchNetDevice::m_id),
                    MakeUintegerChecker<uint64_t> ())
-    .AddAttribute ("FlowTableLookupDelay",
-                   "A real switch will have an overhead for looking up in the flow table. For the default, we simulate a standard TCAM on an FPGA.",
-                   TimeValue (NanoSeconds (30)),
-                   MakeTimeAccessor (&PortlandSwitchNetDevice::m_lookupDelay),
-                   MakeTimeChecker ())
-    .AddAttribute ("Flags", // Note: The Controller can configure this value, overriding the user's setting.
-                   "Flags to turn different functionality on/off, such as whether to inform the controller when a flow expires, or how to handle fragments.",
-                   UintegerValue (0), // Look at the ofp_config_flags enum in openflow/include/openflow.h for options.
-                   MakeUintegerAccessor (&PortlandSwitchNetDevice::m_flags),
-                   MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("FlowTableMissSendLength", // Note: The Controller can configure this value, overriding the user's setting.
-                   "When forwarding a packet the switch didn't match up to the controller, it can be more efficient to forward only the first x bytes.",
-                   UintegerValue (OFP_DEFAULT_MISS_SEND_LEN), // 128 bytes
-                   MakeUintegerAccessor (&PortlandSwitchNetDevice::m_missSendLen),
-                   MakeUintegerChecker<uint16_t> ())
   ;
   return tid;
 }
@@ -111,8 +98,8 @@ PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
 
   m_fabricManager = 0;
 
-  m_upper_ports.reserve (DP_MAX_PORTS);
-  m_lower_ports.reserve (DP_MAX_PORTS);
+  m_upper_ports.reserve (100);
+  m_lower_ports.reserve (100);
 }
 
 PortlandSwitchNetDevice::~PortlandSwitchNetDevice ()
@@ -139,7 +126,7 @@ PortlandSwitchNetDevice::DoDispose ()
 
   m_fabricManager = 0;
 
-  chain_destroy (m_chain);
+  m_table.clear();
 
   m_channel = 0;
   m_node = 0;
@@ -332,15 +319,6 @@ PortlandSwitchNetDevice::IsBridge (void) const
 void
 PortlandSwitchNetDevice::DoOutput (uint32_t packet_uid, int in_port, size_t max_len, int out_port, bool ignore_no_fwd)
 {
-  // outport = -1 indicates no outport found so forward to controller
-  if (out_port != -1)
-    {
-      OutputPort (packet_uid, in_port, out_port, ignore_no_fwd);
-    }
-  else
-    {
-      OutputControl(srcIP, srcPMAC, destIP, action);
-    }
 }
 
 bool
@@ -355,19 +333,6 @@ bool
 PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const Address& dest, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION_NOARGS ();
-
-  ofpbuf *buffer = BufferFromPacket (packet, src, dest, GetMtu (), protocolNumber);
-
-  uint32_t packet_uid = save_buffer (buffer);
-  ofi::SwitchPacketMetadata data;
-  data.packet = packet;
-  data.buffer = buffer;
-  data.protocolNumber = protocolNumber;
-  data.src = Address (src);
-  data.dst = Address (dest);
-  m_packetData.insert (std::make_pair (packet_uid, data));
-
-  RunThroughPMACTable (packet_uid, -1);
 
   return true;
 }
@@ -423,17 +388,20 @@ PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
 }
 
 // Function to attract packet fields from the packet received and return a buffer with all necessary fields
-
-PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, int mtu, uint16_t protocol)
+SwitchPacketMetadata
+PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, uint16_t protocol)
 {
   NS_LOG_INFO ("Extracting metadata from packet.");
 
   Ptr<Packet> packet = constPacket->Copy ();
 
   pld::SwitchPacketMetadata metadata;
-  metadata.src = src;              // Destination Mac Address
-  metadata.dst = dst;              // Source Mac Address
+
+  metadata.packet = packet->Copy();
+  metadata.src_amac = Mac48Address.ConvertFrom (src);             // Actual Source Mac Address
+  metadata.dst_pmac = Mac48Address.ConvertFrom (dst);             // Destination Psuedo Mac Address
   metadata.protocolNumber = protocol;
+
   if (protocol != ArpL3Protocol::PROT_NUMBER && protocol != Ipv4L3Protocol::PROT_NUMBER)
   {
     NS_LOG_WARN ("Protocol unsupported: " << protocol);
@@ -488,11 +456,12 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
       m_promiscRxCallback (this, packet, protocol, src, dst, packetType);
     }
 
-  Mac48Address dst48 = Mac48Address::ConvertFrom (dst);
-  NS_LOG_INFO ("Received packet from " << Mac48Address::ConvertFrom (src) << " looking for " << dst48);
+  Mac48Address dst_mac = Mac48Address::ConvertFrom (dst);
+  Mac48Address src_mac = Mac48Address::ConvertFrom (src);
+  NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac);
 
   bool from_upper = false;
-  uint32_t in_port = -1;
+  uint8_t in_port;
   for (size_t i = 0; i < m_lower_ports.size (); i++)
     {
       if (m_lower_ports[i].netdev == netdev)
@@ -516,13 +485,13 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
     }
 
     
-    if (packetType == PACKET_HOST && dst48 == m_address)
+    if (packetType == PACKET_HOST && dst_mac == m_address)
       {
         m_rxCallback (this, packet, protocol, src);
       }
     else if (packetType == PACKET_BROADCAST || packetType == PACKET_MULTICAST || packetType == PACKET_OTHERHOST)
       {
-        if (packetType == PACKET_OTHERHOST && dst48 == m_address)
+        if (packetType == PACKET_OTHERHOST && dst_mac == m_address)
           {
             m_rxCallback (this, packet, protocol, src);
           }
@@ -533,75 +502,119 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                 m_rxCallback (this, packet, protocol, src);
               }
             else
-            {
-              if (protocol == ArpL3Protocol::PROT_NUMBER)
-              {
-                // parse packet
-                pld::SwitchPacketMetadata metadata;
-                metadata = MetadataFromPacket (packet.Copy (), src, dst, netdev->GetMtu (), protocol);
+            { 
+              // parse packet
+              pld::SwitchPacketMetadata metadata;
+              metadata = MetadataFromPacket (packet.Copy (), src, dst, protocol);
 
-                RunThroughPMACTable (metadata, in_port, from_upper);
+              if (!from_upper)
+              {
+                if (m_device_type == EDGE)
+                { 
+                  metadata.src_pmac = FindSourcePMAC (metadata, in_port, from_upper);
+                  if (metadata.src_pmac == GetBroadcast())
+                  {
+                    return; // drop packet due to error in finding/allocating PMAC
+                  }
+                  
+                  // Query for dst_pmac based on dst_ip from local table and/or Fabric Manager
+                  Mac48Address dst_pmac = GetDestinationPMAC (metadata.dst_ip, metadata.src_ip, metadata.src_pmac);
+                  // if dst_pmac is broadcast => failed to find dst_pmac; Fabric Manager will broadcast ARP Request
+                  if (dst_pmac == GetBroadcast ())
+                  {
+                    return; // drop ARP Request here as it will be re-created at CORE switches
+                  }
+                  
+                  metadata.dst_pmac = dst_pmac;
+                  out_port = GetOutputPort(metadata.dst_pmac);
+                  metadata.packet = packet->Copy ();
+                  OutputPacket(metadata, out_port, true);
+                }
+                else if (m_device_type == AGGREGATION)
+                {
+                  // basic forwarding
+                  out_port = GetOutputPort(metadata.dst_pmac);
+                  metadata.packet = packet->Copy ();
+                  OutputPacket(metadata, out_port, true);
+                }
+                else if (m_device_type == CORE)
+                {
+                  // basic forwarding
+                  out_port = GetOutputPort(metadata.dst_pmac);
+                  metadata.packet = packet->Copy ();
+                  OutputPacket(metadata, out_port, false);
+                }
+                else
+                {
+                  // no-op; not valid switch type
+                  return;
+                }
               }
               else
               {
-                // call PMAC-based forwarding logic
-              }
-            }
+                if (m_device_type == EDGE)
+                { 
+                  if (metadata.dst_pmac == GetBroadcast())
+                  {
+                    for (size_t i = 0; i < m_lower_ports.size(); i++)
+                    {
+                      metadata.packet = packet->Copy ();
+                      OutputPacket(metadata, i, false);
+                    }
+                  }
+                  else
+                  {
+                    Mac48Address dst_amac = FindAMAC(metadata.dst_pmac);
+                    if (dst_pmac == GetBroadcast ())
+                    {
+                      return; // drop packet due to error (AMAC never seen)
+                    }
 
-           
+                    out_port = GetOutputPort(metadata.dst_pmac);
+                    metadata.dst_pmac = dst_amac; // re-write dst_amac and forward to port
+                    metadata.packet = packet->Copy ();
+                    OutputPacket(metadata, out_port, false);
+                  }
+                }
+                else if (m_device_type == AGGREGATION)
+                {
+                  // basic forwarding
+                  out_port = GetOutputPort(metadata.dst_pmac);
+                  metadata.packet = packet->Copy ();
+                  OutputPacket(metadata, out_port, false);
+                }
+                else if (m_device_type == CORE)
+                {
+                  // no-op; as for CORE switch from_upper = false always so this case should never happen
+                  return;
+                }
+                else
+                {
+                  // no-op; invalid switch type
+                  return;
+                }
+              }
+            } 
           }
       }
 
 }
 
-// Function to flood a given packet on all except incoming port.
-int
-PortlandSwitchNetDevice::OutputAll (uint32_t packet_uid, int in_port, bool flood)
-{
-  NS_LOG_FUNCTION_NOARGS ();
-  NS_LOG_INFO ("Flooding over ports.");
-
-  int prev_port = -1;
-  for (size_t i = 0; i < m_ports.size (); i++)
-    {
-      if (i == (unsigned)in_port) // Originating port
-        {
-          continue;
-        }
-      if (flood && m_ports[i].config & OFPPC_NO_FLOOD) // Port configured to not allow flooding
-        {
-          continue;
-        }
-      if (prev_port != -1)
-        {
-          OutputPort (packet_uid, in_port, prev_port, false);
-        }
-      prev_port = i;
-    }
-  if (prev_port != -1)
-    {
-      OutputPort (packet_uid, in_port, prev_port, false);
-    }
-
-  return 0;
-}
-
 // Function to forward a given packet to the specified out port.
 void
-PortlandSwitchNetDevice::OutputPacket (uint32_t packet_uid, int out_port)
+PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, int out_port, bool is_upper)
 {
-  if (out_port >= 0 && out_port < DP_MAX_PORTS)
+  Ports_t ports = (is_upper ? m_upper_ports : m_lower_ports);
+  if (out_port >= 0 && out_port < ports.size())
     {
-      ofi::Port& p = m_ports[out_port];
-      if (p.netdev != 0 && !(p.config & OFPPC_PORT_DOWN))
+      pld::Port& p = ports[out_port];
+      if (p.netdev != 0)
         {
-          ofi::SwitchPacketMetadata data = m_packetData.find (packet_uid)->second;
-          size_t bufsize = data.buffer->size;
-          NS_LOG_INFO ("Sending packet " << data.packet->GetUid () << " over port " << out_port);
-          if (p.netdev->SendFrom (data.packet->Copy (), data.src, data.dst, data.protocolNumber))
+          NS_LOG_INFO ("Sending packet " << packet->GetUid () << " over port " << out_port);
+          if (p.netdev->SendFrom (metadata.packet->Copy (), metadata.src_pmac, metadata.dst_pmac, metadata.protocol_number))
             {
               p.tx_packets++;
-              p.tx_bytes += bufsize;
+              p.tx_bytes += metadata.packet->GetSize();
             }
           else
             {
@@ -614,100 +627,92 @@ PortlandSwitchNetDevice::OutputPacket (uint32_t packet_uid, int out_port)
   NS_LOG_DEBUG ("can't forward to bad port " << out_port);
 }
 
-//Function similar to previous one but with unconditional forwarding (ignore_no_fwd) to an out port.
-void
-PortlandSwitchNetDevice::OutputPort (uint32_t packet_uid, int in_port, int out_port, bool ignore_no_fwd)
-{
-  NS_LOG_FUNCTION_NOARGS ();
 
-  // TODO: use this for flooding ARP if fabric manager doesn't hold a mapping
-  if (out_port == OFPP_FLOOD)
-    {
-      OutputAll (packet_uid, in_port, true);
-    }
-  else if (out_port == OFPP_ALL)
-    {
-      OutputAll (packet_uid, in_port, false);
-    }
-  else if (out_port == FABRIC_MANAGER_PORT)
-    {
-      OutputControl(srcIP, srcPMAC, destIP, action);
-    }
-  else if (out_port == OFPP_IN_PORT)
-    {
-      OutputPacket (packet_uid, in_port);
-    }
-  else if (out_port == OFPP_TABLE)
-    {
-      RunThroughPMACTable (packet_uid, in_port < DP_MAX_PORTS ? in_port : -1, false);
-    }
-  else if (in_port == out_port)
-    {
-      NS_LOG_DEBUG ("can't directly forward to input port");
-    }
-  else
-    {
-      OutputPacket (packet_uid, out_port);
-    }
-}
-
-// Function to prepare a buffer containing reply to  controller/fabric manager message
-void*
-PortlandSwitchNetDevice::MakeOpenflowReply (size_t openflow_len, uint8_t type, ofpbuf **bufferp)
+BufferData
+PortlandSwitchNetDevice::SendBufferToFabricManager(BufferData request_buffer)
 {
-  return make_openflow_xid (openflow_len, type, 0, bufferp);
-}
-
-// Function to send a buffer containing a message to the fabric manager
-int
-PortlandSwitchNetDevice::SendOpenflowBuffer (ofpbuf *buffer)
-{
+  BufferData response_buffer;
   if (m_fabricManager != 0)
-    {
-      update_openflow_length (buffer);
-      m_fabricManager->ReceiveFromSwitch (this, buffer);
-    }
+  {
+    m_fabricManager->ReceiveFromSwitch(this, buffer);
+  }
 
-  return 0;
+  return response_buffer;
 }
 
-// Function to forward packet info to the fabric manager
 void
-PortlandSwitchNetDevice::OutputControl (Ipv4Address srcIP, Mac48Address srcPMAC,
-			Ipv4Address destIP, /* reqd only if action == PKT_ARP_REQUEST */
-			PACKET_TYPE action)
+PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(BufferData request_buffer)
 {
-	BufferData buffer;
-	NS_LOG_INFO ("Sending arp_request packet to fabric manager");
+  if (request_buffer.type == PKT_ARP_FLOOD)
+  {
+    ARPFloodRequest* msg = (ARPFloodRequest*)buffer.message;
+    ARPFloodFromFabricManager(msg->destIPAddress, msg->srcIPAddress, msg->srcPMACAddress);
+  }
+  else
+  {
+    // no-op
+  }
 
-	switch(action) {
-		case PKT_MAC_REGISTER:
-			PMACRegister *msg = (PMACRegister *) malloc (sizeof(PMACRegister));
-			msg->hostIP = srcIP;
-			msg->PMACAddress = srcPMAC;
+  free(msg);
+  request_buffer.message = NULL;
+}
 
-			buffer.type = action;
-			buffer.message = msg;
-			SendOpenflowBuffer (buffer);
-			break;
+void
+PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address src_pmac)
+{
+  PMACRegister* msg = (PMACRegister *) malloc (sizeof(PMACRegister));
+  msg->hostIP = src_ip;
+  msg->PMACAddress = src_pmac;
+  
+  BufferData buffer;
+  buffer.type = PKT_MAC_REGISTER;
+  buffer.message = msg;
 
-		case PKT_ARP_REQUEST:
-			ARPRequest* msg = (ARPRequest *) malloc (sizeof(ARPRequest));
-			msg->srcIPAddress = srcIP;
-			msg->srcPMACAddress = srcPMAC;
-			msg->destIPAddress = destIP;
-			
-			buffer.type = action;
-			buffer.message = msg;
-			SendOpenflowBuffer (buffer);
-			break;
+  SendBufferToFabricManager(buffer);
+}
 
-		case PKT_ARP_RESPONSE:
-		case PKT_ARP_FLOOD:
-		default:
-			NS_LOG_COND("Invalid action requested from FM");
+Mac48Address
+PortlandSwitchNetDevice::QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
+{
+  ARPRequest* msg = (ARPRequest *) malloc (sizeof(ARPRequest));
+  msg->srcIPAddress = src_ip;
+  msg->srcPMACAddress = src_pmac;
+  msg->destIPAddress = dst_ip;
+  
+  BufferData buffer;
+  buffer.type = PKT_ARP_REQUEST;
+  buffer.message = msg;
 
-	}
+  BufferData response = SendBufferToFabricManager(buffer);
+  ARPResponse* arp_resp = (ARPResponse *)(response.message);
+  Mac48Address dst_pmac = arp_resp->destPMACAddress;
+  
+  free(arp_resp);
+  response.message = NULL;
+
+  return dst_pmac;
+}
+
+void
+PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
+{
+  if (m_device_type == CORE)
+  {
+    ArpHeader arp;
+    Ptr<Packet> packet = Create<Packet> ();
+    NS_LOG_LOGIC ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
+                 " || src: " << src_pmac << " / " << src_ip <<
+                 " || dst: " << GetBroadcast () << " / " << dst_ip);
+    arp.SetRequest (src_pmac.ConvertTo (), src_ip, GetBroadcast (), dst_ip);
+    packet->AddHeader (arp);
+
+    SwitchPacketMetadata metadata = MetadataFromPacket (packet.Copy (), src_pmac, GetBroadcast(), ArpL3Protocol::PROT_NUMBER);
+    for (size_t i = 0; i < m_lower_ports.size(); i++)
+    {
+      metadata.packet = packet->Copy ();
+      OutputPacket(metadata, i, false);
+    }
+  }
 }
 
 // Function that gets the output port index based on destination PMAC address
@@ -728,7 +733,7 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   }
   
   // if this device is aggregate: same pod -- downstream, otherwise -- upstream on random port to core
-  if (m_device_type == AGGREGATION)
+  else if (m_device_type == AGGREGATION)
   {
     // same pod -- downstream
     if (m_pod == dst_pod)
@@ -739,13 +744,13 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
     // different pod -- upstream
     else
     {
-      // random between k / 2 and k
-      return (k / 2) + rand() % (k / 2);
+      // random port connected to aggregation layer
+      return (rand() % m_upper_ports.size());
     }
   }
   
   // if this device is edge: same pod and position -- downstream, otherwise -- upstream on random port to aggregate
-  if (m_device_type == EDGE)
+  else if (m_device_type == EDGE)
   { 
     // same pod and position
     if (m_pod == dst_pod && m_position == dst_mac_buffer[2])
@@ -756,56 +761,29 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
     // upstream
     else
     {
-      // random between k / 2 and k
-      return (k / 2) + rand() % (k / 2);
+      // random port connected to core layer
+      return (rand() % m_upper_ports.size());
     }
   }
 }
 
-// Function to lookup matching host fields in PMAC table return corresponding PMAC or assign PMAC and update fabric manager
-void
-PortlandSwitchNetDevice::PMACTableLookup (sw_flow_key key, ofpbuf* buffer, uint32_t packet_uid, int port, bool send_to_fabric_manager)
-{
-  sw_flow *flow = chain_lookup (m_chain, &key);
-  if (flow != 0)
-    {
-      NS_LOG_INFO ("Flow matched");
-      flow_used (flow, buffer);
-      ofi::ExecuteActions (this, packet_uid, buffer, &key, flow->sf_acts->actions, flow->sf_acts->actions_len, false);
-    }
-  else
-    {
-      NS_LOG_INFO ("Flow not matched.");
-
-      if (send_to_fabric_manager)
-        {
-          OutputControl (srcIP, srcPMAC, destIP, action);
-        }
-    }
-
-  // Clean up; at this point we're done with the packet.
-  m_packetData.erase (packet_uid);
-  discard_buffer (packet_uid);
-  ofpbuf_delete (buffer);
-}
-
-void
-PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int in_port, bool from_upper)
+Mac48Address
+PortlandSwitchDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper)
 {
   // port checking
-  if (port > (k / 2))
+  if ((from_upper && in_port < m_upper_ports.size()) || (!from_upper && in_port < m_lower_ports.size()))
   {
-    NS_LOG_INFO("Illegal port");
+    NS_LOG_INFO("Illegal in-port" << in_port);
     return;
   }
   
-  Mac48Address src_amac = Mac48Address.ConvertFrom(metadata.src_mac);
+  Mac48Address src_amac = metadata.src_mac;
   Ipv4Address dst_ip = metadata.dst_ip;
   Ipv4Address src_ip = metadata.src_ip;
   Mac48Address src_pmac;
   
   // check for src_PMAC existence
-  if (m_table.FindPort(src_ip) != 0)
+  if (m_table.FindPort(src_ip) != -1)
   {
     src_pmac = m_table.FindPMAC(src_amac);
   }
@@ -818,141 +796,42 @@ PortlandSwitchDevice::RunThroughPMACTable (SwitchPacketMetadata metadata, int in
     src_pmac_buffer[0] = 0;
     src_pmac_buffer[1] = m_pod;
     src_pmac_buffer[2] = m_position;
-    src_pmac_buffer[3] = port;
+    src_pmac_buffer[3] = in_port;
     src_pmac_buffer[4] = 0;
     src_pmac_buffer[5] = 1;
     
     src_pmac.CopyFrom(src_pmac_buffer);
     
     // adding entry to the table
-    m_table.Add(src_amac, src_pmac, port);
+    m_table.Add(src_pmac, src_amac, src_ip, in_port);
     
     // register this entry with fabric manager
-    OutputControl(src_ip, src_pmac, 0, PKT_MAC_REGISTER);
+    UpdateFabricManager(src_ip, src_pmac);
   }
   
-  // if the edge switch has this IP-PMAC entry
-  // send ARP response to the host
-  if (m_table.ContainsIP(dst_ip))
+  return src_pmac;
+}
+
+Mac48Address
+PortlandSwitchDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
+{
+  Mac48Address dst_pmac;
+  // check locally if dst is connected to same edge switch
+  // and has been assigned PMAC already
+  if (m_table.FindPort(dst_ip) != -1)
   {
-    Mac48Address dst_pmac = m_table.FindPMAC(dst_ip); 
-    ArpHeader arp;
- 		arp.SetReply (dst_pmac, dst_ip, src_pmac, src_ip);
-	  Ptr<Packet> packet = Create<Packet> ();
-	  packet->AddHeader(arp);
-	  Send (packet, src_pmac, ArpL3Protocol::PROT_NUMBER);
+    dst_pmac = m_table.FindPMAC(dst_ip);
   }
-  // else send ARP request to the fabric manager
   else
   {
-    OutputControl(src_ip, src_pmac, dst_ip, PKT_ARP_REQUEST);
+    dst_pmac = QueryFabricManager(dst_ip, src_ip, dst_pmac);
   }
+
+  return dst_pmac;
 }
 
-// incoming packet/action from fabric manager (Eg: a flood ARP-Req to core switch)
-int
-PortlandSwitchNetDevice::ReceivePacketOut (const void *msg)
-{
-  const ofp_packet_out *opo = (ofp_packet_out*)msg;
-  ofpbuf *buffer;
-  size_t actions_len = ntohs (opo->actions_len);
 
-  if (actions_len > (ntohs (opo->header.length) - sizeof *opo))
-    {
-      NS_LOG_DEBUG ("message too short for number of actions");
-      return -EINVAL;
-    }
-
-  if (ntohl (opo->buffer_id) == (uint32_t) -1)
-    {
-      // FIXME: can we avoid copying data here?
-      int data_len = ntohs (opo->header.length) - sizeof *opo - actions_len;
-      buffer = ofpbuf_new (data_len);
-      ofpbuf_put (buffer, (uint8_t *)opo->actions + actions_len, data_len);
-    }
-  else
-    {
-      buffer = retrieve_buffer (ntohl (opo->buffer_id));
-      if (buffer == 0)
-        {
-          return -ESRCH;
-        }
-    }
-
-  sw_flow_key key;
-  flow_extract (buffer, ntohs(opo->in_port), &key.flow); // ntohs(opo->in_port)
-
-  uint16_t v_code = ofi::ValidateActions (&key, opo->actions, actions_len);
-  if (v_code != ACT_VALIDATION_OK)
-    {
-      SendErrorMsg (OFPET_BAD_ACTION, v_code, msg, ntohs (opo->header.length));
-      ofpbuf_delete (buffer);
-      return -EINVAL;
-    }
-
-  ofi::ExecuteActions (this, opo->buffer_id, buffer, &key, opo->actions, actions_len, true);
-  return 0;
-}
-
-// Main handler for incoming messages from controller; calls specialized body parsers depending on type of message
-int
-PortlandSwitchNetDevice::ForwardControlInput (BufferData buffer)
-{
-	int error = 0;
-	assert(buffer.message != NULL);
-
-	// Figure out how to handle it.
-	switch (buffer.pkt_type) {
-    case PKT_ARP_RESPONSE:
-		ARPResponse* msg = (ARPResponse*)buffer.message;
-
-		// marshall arp_response packet and send to src_pmac
-		if (m_device_type == EDGE) {
-			ArpHeader arp;
-			arp.SetReply (msg->destPMACAddress, msg->destIPAddress,
-						  msg->srcPMACAddress, msg->srcIPAddress);
-
-			Ptr<Packet> packet = Create<Packet> ();
-			packet->AddHeader(arp);
-			this.Send(packet, msg->srcPMACAddress, ArpL3Protocol::PROT_NUMBER);
-		} else {
-			// non-edge switches shouldn't receive ARPRequest from FM.
-			error = -EINVAL;
-		}
-
-		break;
-
-    case PKT_ARP_FLOOD:
-		ARPFloodRequest* msg = (ARPFloodRequest*)buffer.message;
-
-		// marshall arp_request packet and flood downstream
-		if (m_device_type == CORE) {
-			ARPHeader arp;
-			arp.SetRequest (msg->srcPMACAddess, msg->srcIPAddess,
-							GetBroadcast (), msg->destIPAddess);
-
-			packet->AddHeader (arp);
-			this.Send(packet, GetBroadcast(), ArpL3Protocol::PROT_NUMBER);
-		} else {
-			// non-core switches shouldn't recieve flood request from FM.
-			error = -EINVAL;
-		}
-
-		break;
-
-    case PKT_ARP_REGISTER:
-    case PKT_ARP_REQUEST:
-	default :
-		NS_LOG_DEBUG ("Incorrect message type received from FM");
-		error = -EINVAL;
-    }
-
-	if (buffer.message != NULL) {
-		free (buffer.message);
-    }
-	return error;
-}
-
+//dummy impl
 uint32_t
 PortlandSwitchNetDevice::GetNSwitchPorts (void) const
 {
@@ -960,23 +839,28 @@ PortlandSwitchNetDevice::GetNSwitchPorts (void) const
   return m_ports.size ();
 }
 
+
+// dummy impl
 pld::Port
 PortlandSwitchNetDevice::GetSwitchPort (uint32_t n) const
 {
   NS_LOG_FUNCTION_NOARGS ();
-  return m_ports[n];
+  pld::Port port;
+  return port;
 }
 
+// dummy impl
 int
 PortlandSwitchNetDevice::GetSwitchPortIndex (ofi::Port p)
 {
-  for (size_t i = 0; i < m_ports.size (); i++)
+  /*for (size_t i = 0; i < m_ports.size (); i++)
     {
       if (m_ports[i].netdev == p.netdev)
         {
           return i;
         }
     }
+  */
   return -1;
 }
 
@@ -1011,7 +895,7 @@ PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
   }
 }
 
-uint32_t
+int
 PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac) const
 {
   uint32_t port;
@@ -1020,10 +904,10 @@ PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac) const
     return (pair->second).port;
   }
 
-  return 0;
+  return -1;
 }
 
-uint32_t
+int
 PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) const
 {
   std::map<Mac48Address, PMACEntry>::iterator it = mapping.begin();
@@ -1035,7 +919,7 @@ PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) cons
     }
   }
 
-  return 0;
+  return -1;
 }
 
 Mac48Address
