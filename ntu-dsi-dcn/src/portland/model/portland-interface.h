@@ -37,7 +37,7 @@
 #include <limits>
 
 // Include main header
-#include "portland/portland.h"
+// #include "portland/portland.h"
 
 namespace ns3 {
 
@@ -45,6 +45,12 @@ class PortlandSwitchNetDevice;
 
 namespace pld {
 
+enum PortlandSwitchType {
+    EDGE = 1,
+    AGGREGATION,
+    CORE
+  };
+  
 /**
  * \brief Port and its metadata.
  */
@@ -142,8 +148,8 @@ public:
 private:
 
     // IP - PMAC table and management functions
-    map<Ipv4Address, Mac48Address> IpPMACTable;
-    map<Ipv4Address, Mac48Address>::iterator it;
+    std::map<Ipv4Address, Mac48Address> IpPMACTable;
+    std::map<Ipv4Address, Mac48Address>::iterator it;
 
     void addPMACToTable(Ipv4Address ip, Mac48Address pmac);
 

@@ -38,6 +38,8 @@
 #include "ns3/csma-module.h"
 #include "ns3/ipv4-nix-vector-helper.h"
 #include "ns3/random-variable.h"
+#include "ns3/portland-module.h"
+//#include "ns3/portland-switch-helper.h"
 
 /*
 	- This work goes along with the paper "Towards Reproducible Performance Studies of Datacenter Network Architectures Using An Open-Source Simulation Approach"
@@ -80,7 +82,7 @@
 
 using namespace ns3;
 using namespace std;
-NS_LOG_COMPONENT_DEFINE ("Fat-Tree-Architecture");
+NS_LOG_COMPONENT_DEFINE ("Portland-Architecture");
 
 // Function to create address string from numbers
 //
@@ -145,9 +147,9 @@ int
 
 // Initialize other variables
 //
-	int i = 0;	
-	int j = 0;	
-	int h = 0;
+	uint8_t i = 0;	
+	uint8_t j = 0;	
+	uint8_t h = 0;
 
 // Initialize parameters for On/Off application
 //
@@ -180,29 +182,31 @@ int
 	list.Add (nixRouting, 10);	
 	internet.SetRoutingHelper(list);
 	
-	PortlandSwitchHelper psh;
 	
+	PortlandSwitchHelper psh;
+	Ptr<pld::FabricManager> fm;
+	NetDeviceContainer testNetDeviceContainer;
 //=========== Creation of Node Containers ===========//
 //
 	NodeContainer core[num_group];				// NodeContainer for core switches
 	for (i=0; i<num_group;i++){  	
 		core[i].Create (num_core);
 		for(j=0; j<num_core;j++){
-			psh.Install (core[i].Get(j),core[i],3,0,0);
+			psh.Install (core[i].Get(j),testNetDeviceContainer,fm,pld::CORE,0,0);
 		}		
 	}
 	NodeContainer agg[num_pod];				// NodeContainer for aggregation switches
 	for (i=0; i<num_pod;i++){  	
 		agg[i].Create (num_agg);
 		for(j=0; j<num_agg;j++){
-			psh.Install (agg[i].Get(j),agg[i],2,i,j);
+			psh.Install (agg[i].Get(j),testNetDeviceContainer,fm, pld::AGGREGATION,i,j);
 		}
 	}
 	NodeContainer edge[num_pod];				// NodeContainer for edge switches
   	for (i=0; i<num_pod;i++){  	
 		edge[i].Create (num_bridge);
 		for(j=0; j<num_bridge;j++){
-			psh.Install (edge[i].Get(j),edge[i],1,i,j);
+			psh.Install (edge[i].Get(j),testNetDeviceContainer,fm, pld::EDGE,i,j);
 		}	
 	}
 	/*

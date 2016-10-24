@@ -87,12 +87,6 @@ namespace ns3 {
 class PortlandSwitchNetDevice : public NetDevice
 {
 public:
-
-  enum PortlandSwitchType {
-    EDGE = 1,
-    AGGREGATION,
-    CORE
-  };
   /**
    * Register this type.
    * \return The TypeId.
@@ -122,7 +116,7 @@ public:
   PortlandSwitchNetDevice ();
   
   // Constructor -- with device_type, pod and position
-  PortlandSwitchNetDevice(PortlandSwitchType device_type, uint8_t  pod, uint8_t position);
+  PortlandSwitchNetDevice(pld::PortlandSwitchType device_type, uint8_t  pod, uint8_t position);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
@@ -187,9 +181,9 @@ public:
    */
   pld::Port GetSwitchPort (uint32_t n) const;
 
-  void PortlandSwitchNetDevice::SetDeviceType (const PortlandSwitchType device_type);
+  void SetDeviceType (const pld::PortlandSwitchType device_type);
 
-  PortlandSwitchType PortlandSwitchNetDevice::GetDeviceType (void) const;
+  pld::PortlandSwitchType GetDeviceType (void) const;
 
   // From NetDevice
   virtual void SetIfIndex (const uint32_t index);
@@ -262,7 +256,7 @@ protected:
    * \param protocol The protocol defining the packet.
    * \return The OpenFlow Buffer created from the packet.
    */
-  SwitchPacketMetadata MetadataFromPacket (Ptr<const Packet> packet, Address src, Address dst, uint16_t protocol);
+  pld::SwitchPacketMetadata MetadataFromPacket (Ptr<const Packet> packet, Address src, Address dst, uint16_t protocol);
 
 private:
   /**
@@ -289,7 +283,7 @@ private:
   
   /// These are to be set during initialization of the device
   /// Used in PortlandSwitchNetDevice::GetOutputPort
-  PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
+  pld::PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 

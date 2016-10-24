@@ -1,3 +1,6 @@
+#ifndef PORTLAND_PROTOCOL_H
+#define PORTLAND_PROTOCOL_H
+
 #include <string.h>
 #include <iostream>
 #include <stdlib.h>
@@ -9,3 +12,5 @@ enum PACKET_TYPE {
 	PKT_ARP_RESPONSE,
 	PKT_ARP_FLOOD
 };
+
+#endif

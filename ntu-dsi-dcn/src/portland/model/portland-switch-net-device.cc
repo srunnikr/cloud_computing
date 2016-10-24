@@ -15,7 +15,7 @@
  *
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
-#ifdef NS3_PORTLAND
+//#ifdef NS3_PORTLAND
 
 #include <cstdlib>
 
@@ -956,4 +956,4 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
 
 } // namespace ns3
 
-#endif // NS3_PORTLAND
+//#endif // NS3_PORTLAND

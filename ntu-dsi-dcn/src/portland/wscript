@@ -10,7 +10,10 @@ def build(bld):
     module = bld.create_ns3_module('portland', ['core'])
     module.source = [
         'model/portland.cc',
-        'helper/portland-helper.cc',
+	'model/portland-interface.cc',
+        'model/portland-switch-net-device.cc',
+	'helper/portland-helper.cc',
+        'helper/portland-switch-helper.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('portland')
@@ -22,7 +25,10 @@ def build(bld):
     headers.module = 'portland'
     headers.source = [
         'model/portland.h',
-        'helper/portland-helper.h',
+	'model/portland-interface.h',
+	'model/portlandProtocol.h',
+	'model/portland-switch-net-device.h',
+	'helper/portland-switch-helper.h'
         ]
 
     if bld.env.ENABLE_EXAMPLES:

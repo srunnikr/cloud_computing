@@ -15,7 +15,7 @@
  *
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
-#ifdef NS3_PORTLAND
+//#ifdef NS3_PORTLAND
 
 #include "portland-interface.h"
 #include "portland-switch-net-device.h"
@@ -214,4 +214,4 @@ FabricManager::FloodARPRequest(ARPFloodRequest* message, Ptr<PortlandSwitchNetDe
 
 } // end ns3 namespace
 
-#endif // NS3_PORTLAND
+//#endif // NS3_PORTLAND
