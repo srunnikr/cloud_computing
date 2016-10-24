@@ -66,7 +66,11 @@ public:
    */
   NetDeviceContainer
   Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager);
-
+  
+  NetDeviceContainer
+  Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager,
+  PortlandSwitchType device_type, uint8_t pod, uint8_t position);
+  
   /**
    * This method creates an ns3::PortlandSwitchNetDevice with the attributes
    * configured by PortlandSwitchHelper::SetDeviceAttribute, adds the device

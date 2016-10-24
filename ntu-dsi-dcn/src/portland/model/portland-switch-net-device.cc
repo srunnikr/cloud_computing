@@ -77,12 +77,12 @@ PortlandSwitchNetDevice::GetTypeId (void)
   return tid;
 }
 
-// Portland NetDevice constructor
-PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
+// PortlandSwitchNetDevice constructor
+PortlandSwitchNetDevice::PortlandSwitchNetDevice (PortlandSwitchType device_type, uint8_t pod, uint8_t position)
   : m_node (0),
     m_ifIndex (0),
     m_mtu (0xffff),
-    m_device_type(1),
+    m_device_type(3),
     m_pod(0),
     m_position(0),
     m_packetData(),
@@ -97,6 +97,10 @@ PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   m_channel = CreateObject<BridgeChannel> ();
 
   m_fabricManager = 0;
+  
+  m_device_type = device_type;
+  m_pod = pod;
+  m_position = position;
 
   m_upper_ports.reserve (100);
   m_lower_ports.reserve (100);

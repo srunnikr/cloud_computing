@@ -66,6 +66,29 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pl
 }
 
 NetDeviceContainer
+PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager, 
+                                PortlandSwitchType device_type, uint8_t pod, uint8_t position)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
+
+  NetDeviceContainer devs;
+  Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> (device_type, pod, position);
+  devs.Add (dev);
+  node->AddDevice (dev);
+
+  NS_LOG_INFO ("**** Set up Fabric Manager");
+  dev->SetFabricManager (fabric_manager);
+
+  for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
+    {
+      NS_LOG_INFO ("**** Add SwitchPort " << *i);
+      dev->AddSwitchPort (*i);
+    }
+  return devs;
+}
+
+NetDeviceContainer
 PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c)
 {
   NS_LOG_FUNCTION_NOARGS ();

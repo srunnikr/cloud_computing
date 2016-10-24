@@ -120,7 +120,9 @@ public:
   /**@}*/
 
   PortlandSwitchNetDevice ();
-  PortlandSwitchNetDevice(int device_type, int pod = 0, int position = 0);
+  
+  // Constructor -- with device_type, pod and position
+  PortlandSwitchNetDevice(PortlandSwitchType device_type, uint8_t  pod, uint8_t position);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
