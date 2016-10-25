@@ -79,13 +79,15 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData
   switch (packet_type)
   {
     case PKT_MAC_REGISTER:
-    //PMACRegister* message = (PMACRegister*) (buffer.message);
-    //PMACRegisterHandler(message);
+    // TODO
+    // pld::PMACRegister* message = (pld::PMACRegister*) (buffer.message);
+    // PMACRegisterHandler(message);
     break;
 
     case PKT_ARP_REQUEST:
-    //ARPRequest* message = (ARPRequest*) (buffer.message);
-    //ARPRequestHandler(message, swtch);
+    // TODO
+    // pld::ARPRequest* message = (pld::ARPRequest*) (buffer.message);
+    // ARPRequestHandler(message, swtch);
     break;
 
     case PKT_ARP_RESPONSE:  
@@ -121,7 +123,7 @@ FabricManager::getIPforPMAC (Mac48Address pmac)
     }
   }
 
-  return IPv4Address("255.255.255.255");
+  return Ipv4Address("255.255.255.255");
 }
 
 bool
@@ -134,7 +136,7 @@ FabricManager::isIPRegistered (Ipv4Address ip)
 Mac48Address
 FabricManager::getPMACforIP (Ipv4Address ip)
 {
-  if (FabricManager::isIpRegistered(ip))
+  if (FabricManager::isIPRegistered(ip))
   {
     return IpPMACTable[ip];
   }
@@ -154,13 +156,14 @@ FabricManager::isPmacRegistered (Mac48Address pmac)
 void
 FabricManager::PMACRegisterHandler(PMACRegister* message)
 {
-  addPMACToTable(message->hostIP, message->PMACRegister);
+  // TODO
+  //addPMACToTable(message->hostIP, message->PMACRegister);
 }
 
 void
 FabricManager::ARPRequestHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
 {
-  if (FabricManager::isIpRegistered(message->destIPAddress))
+  if (FabricManager::isIPRegistered(message->destIPAddress))
   {
     // IP address present
     ARPResponse* msg = (ARPResponse*) malloc (sizeof(ARPResponse));
@@ -197,7 +200,7 @@ FabricManager::FloodARPRequest(ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice
 
   for (std::set<Ptr<PortlandSwitchNetDevice> >::iterator it = m_switches.begin(); it != m_switches.end(); it++)
   {
-    if (*it->GetDeviceType() == pld::CORE && *it != swtch)
+    if ((*it)->GetDeviceType() == pld::CORE && *it != swtch)
     {
       SendToSwitch(*it, buffer);
     }

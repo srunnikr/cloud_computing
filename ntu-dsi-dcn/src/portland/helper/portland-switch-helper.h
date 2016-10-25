@@ -20,6 +20,7 @@
 #ifndef PORTLAND_SWITCH_HELPER_H
 #define PORTLAND_SWITCH_HELPER_H
 
+#include "ns3/ipv4-address.h"
 #include "ns3/portland-interface.h"
 #include "ns3/net-device-container.h"
 #include "ns3/object-factory.h"

@@ -135,6 +135,8 @@ public:
   void UpdateFabricManager(Ipv4Address src_ip, Mac48Address src_pmac);
   Mac48Address QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
   void ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
+  pld::BufferData SendBufferToFabricManager(pld::BufferData request_buffer);
+  void ReceiveBufferFromFabricManager(pld::BufferData request_buffer);
 
   /**
    * \brief Add a 'port' to a switch device
@@ -193,7 +195,7 @@ public:
 
   void SetDeviceType (const pld::PortlandSwitchType device_type);
 
-  pld::PortlandSwitchType GetDeviceType (void);
+  pld::PortlandSwitchType GetDeviceType (void) const;
 
   void SetPod (const uint8_t pod);
 

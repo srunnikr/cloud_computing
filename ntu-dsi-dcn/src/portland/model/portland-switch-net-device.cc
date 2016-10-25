@@ -18,7 +18,7 @@
 //#ifdef NS3_PORTLAND
 
 #include <cstdlib>
-#include <cstdint>
+//#include <cstdint>
 
 #include "portland-switch-net-device.h"
 #include "ns3/udp-l4-protocol.h"
@@ -192,7 +192,7 @@ PortlandSwitchNetDevice::SetDeviceType (const pld::PortlandSwitchType device_typ
 }
 
 pld::PortlandSwitchType
-PortlandSwitchNetDevice::GetDeviceType (void)
+PortlandSwitchNetDevice::GetDeviceType (void) const
 {
   NS_LOG_FUNCTION_NOARGS ();
   return m_device_type;
@@ -461,12 +461,6 @@ PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Addr
   return metadata;
 }
 
-Mac48Address
-PortlandSwitchNetDevice::GetSourcePMAC (pld::SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper);
-Mac48Address
-PortlandSwitchNetDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
-void
-PortlandSwitchNetDevice::OutputPacket (pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
 // Actual callback function called when a packet is received on a switch port (i.e. netdev here)
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
@@ -590,8 +584,8 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   }
                   else
                   {
-                    Mac48Address dst_amac = PortlandSwitchNetDevice::PMACTable::FindAMAC(metadata.dst_pmac);
-                    if (dst_pmac == GetBroadcast ())
+                    Mac48Address dst_amac = m_table.FindAMAC(metadata.dst_pmac);
+                    if (metadata.dst_pmac == GetBroadcast ())
                     {
                       return; // drop packet due to error (AMAC never seen)
                     }
@@ -660,7 +654,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
   pld::BufferData response_buffer;
   if (m_fabricManager != 0)
   {
-    m_fabricManager->ReceiveFromSwitch(this, buffer);
+    m_fabricManager->ReceiveFromSwitch(this, response_buffer);
   }
 
   return response_buffer;
@@ -669,29 +663,28 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
 void
 PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_buffer)
 {
-  if (request_buffer.type == PKT_ARP_FLOOD)
+  if (request_buffer.pkt_type == PKT_ARP_FLOOD)
   {
-    ARPFloodRequest* msg = (ARPFloodRequest*)buffer.message;
+    pld::ARPFloodRequest* msg = (pld::ARPFloodRequest*) request_buffer.message;
     ARPFloodFromFabricManager(msg->destIPAddress, msg->srcIPAddress, msg->srcPMACAddress);
+    free(msg);
+    request_buffer.message = NULL;
   }
   else
   {
     // no-op
   }
-
-  free(msg);
-  request_buffer.message = NULL;
 }
 
 void
 PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address src_pmac)
 {
-  PMACRegister* msg = (PMACRegister *) malloc (sizeof(PMACRegister));
+  pld::PMACRegister* msg = (pld::PMACRegister *) malloc (sizeof(pld::PMACRegister));
   msg->hostIP = src_ip;
   msg->PMACAddress = src_pmac;
   
   pld::BufferData buffer;
-  buffer.type = PKT_MAC_REGISTER;
+  buffer.pkt_type = PKT_MAC_REGISTER;
   buffer.message = msg;
 
   SendBufferToFabricManager(buffer);
@@ -700,17 +693,17 @@ PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address sr
 Mac48Address
 PortlandSwitchNetDevice::QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
 {
-  ARPRequest* msg = (ARPRequest *) malloc (sizeof(ARPRequest));
+  pld::ARPRequest* msg = (pld::ARPRequest*) malloc (sizeof(pld::ARPRequest));
   msg->srcIPAddress = src_ip;
   msg->srcPMACAddress = src_pmac;
   msg->destIPAddress = dst_ip;
   
   pld::BufferData buffer;
-  buffer.type = PKT_ARP_REQUEST;
+  buffer.pkt_type = PKT_ARP_REQUEST;
   buffer.message = msg;
 
   pld::BufferData response = SendBufferToFabricManager(buffer);
-  ARPResponse* arp_resp = (ARPResponse *)(response.message);
+  pld::ARPResponse* arp_resp = (pld::ARPResponse*) response.message;
   Mac48Address dst_pmac = arp_resp->destPMACAddress;
   
   free(arp_resp);
@@ -790,6 +783,12 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
       // random port connected to core layer
       return (rand() % m_upper_ports.size());
     }
+  }
+
+  else
+  {
+    NS_LOG_INFO("Illegal device type");
+    return 255;
   }
 }
 
@@ -985,6 +984,13 @@ void
 PortlandSwitchNetDevice::PMACTable::clear(void)
 {
   mapping.clear();
+}
+
+int 
+PortlandSwitchNetDevice::ForwardControlInput (pld::BufferData buffer)
+{
+  // TODO
+  return -1;
 }
 
 } // namespace ns3
