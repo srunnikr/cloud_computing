@@ -79,13 +79,13 @@ namespace ns3 {
  * to an Ipv4 or Ipv6 layer will cause an error. It also must support a SendFrom
  * call.
  */
-/*
+
 enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
   };
-*/
+
 
 /**
  * \ingroup openflow 
