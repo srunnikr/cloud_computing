@@ -200,6 +200,8 @@ public:
 
   uint8_t GetPosition (void) const;
 
+  Mac48Address GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper); 
+  Mac48Address GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 
   // From NetDevice
   virtual void SetIfIndex (const uint32_t index);

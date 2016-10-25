@@ -109,19 +109,10 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c)
   devs.Add (dev);
   node->AddDevice (dev);
 
-  NS_LOG_INFO ("**** Set up Fabric Manager");
-  dev->SetFabricManager (fabric_manager);
-
-  for (NetDeviceContainer::Iterator i = lowerDevices.Begin (); i != lowerDevices.End (); ++i)
+  for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
     {
       NS_LOG_INFO ("**** Add SwitchPort " << *i);
       dev->AddSwitchPort (*i, false);
-    }
-
-  for (NetDeviceContainer::Iterator i = upperDevices.Begin (); i != upperDevices.End (); ++i)
-    {
-      NS_LOG_INFO ("**** Add SwitchPort " << *i);
-      dev->AddSwitchPort (*i, true);
     }
  
   return devs;
