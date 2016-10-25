@@ -16,7 +16,7 @@
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
 #ifndef PORTLAND_INTERFACE_H
-#define PORTLAND_INTERFACE_H
+#define PORTLAND_INTERFACE_H 1
 
 #include <assert.h>
 #include <errno.h>
@@ -44,17 +44,11 @@ namespace ns3 {
 class PortlandSwitchNetDevice;
 
 namespace pld {
-/*
-enum PortlandSwitchType {
-    EDGE = 1,
-    AGGREGATION,
-    CORE
-  };
-*/
 
-/**
+
+  /**
  * \brief Port and its metadata.
- */
+ 
 struct Port
 {
   Port () : netdev (0),
@@ -72,9 +66,8 @@ struct Port
   unsigned long long int tx_dropped;
 };
 
-/**
+
  * \brief Packet Metadata, allows us to track the packet's metadata as it passes through the switch.
- */
 typedef struct SwitchPacketMetadata
 {
   Ptr<Packet> packet;
@@ -86,6 +79,7 @@ typedef struct SwitchPacketMetadata
   Ipv4Address dst_ip;           ///< Destination IPv4 Address of the Packet when the Packet is received.
   bool is_arp_request;          ///< True if it is an ARP Request; False otherwise.
 } SwitchPacketMetadata;
+*/
 
 // Message information for fabric manager
 typedef struct BufferData {
@@ -106,9 +100,9 @@ typedef struct ARPRequest {
 
 typedef struct ARPResponse {
 	Ipv4Address destIPAddress;
-	Ipv4Address destPMACAddress;
+	Mac48Address destPMACAddress;
 	Ipv4Address srcIPAddress;
-    Mac48Address srcPMACAddress;
+  Mac48Address srcPMACAddress;
 } ARPResponse;
 
 typedef struct ARPFloodRequest {

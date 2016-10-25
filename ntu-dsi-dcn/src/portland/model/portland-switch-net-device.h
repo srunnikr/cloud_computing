@@ -22,7 +22,7 @@
  */
 
 #ifndef PORTLAND_SWITCH_NET_DEVICE_H
-#define PORTLAND_SWITCH_NET_DEVICE_H
+#define PORTLAND_SWITCH_NET_DEVICE_H 1
 
 #include "ns3/simulator.h"
 #include "ns3/log.h"
@@ -48,9 +48,62 @@
 #include <set>
 
 #include "portland-interface.h"
+#include "portlandProtocol.h"
 
 namespace ns3 {
 
+
+enum PortlandSwitchType {
+    EDGE = 1,
+    AGGREGATION,
+    CORE
+  };   
+
+
+/**
+ * \brief Port and its metadata.
+ */
+
+namespace pld
+{
+
+struct Port
+{
+  Port () : netdev (0),
+            rx_packets (0),
+            tx_packets (0),
+            rx_bytes (0),
+            tx_bytes (0),
+            tx_dropped (0)
+  {
+  }
+
+  Ptr<NetDevice> netdev;
+  unsigned long long int rx_packets, tx_packets;
+  unsigned long long int rx_bytes, tx_bytes;
+  unsigned long long int tx_dropped;
+};
+
+}
+
+
+/**
+ * \brief Packet Metadata, allows us to track the packet's metadata as it passes through the switch.
+ */
+typedef struct SwitchPacketMetadata
+{
+  Ptr<Packet> packet;
+  uint16_t protocol_number;     ///< Protocol type of the Packet when the Packet is received
+  Mac48Address src_amac;        ///< Actual Source MAC Address of the host when the Packet is received
+  Mac48Address src_pmac;        ///< Psuedo Source MAC Address of the host
+  Mac48Address dst_pmac;        ///< Destination MAC Address of the Packet when the Packet is received.
+  Ipv4Address src_ip;           ///< Source IPv4 Address of the Packet when the Packet is received
+  Ipv4Address dst_ip;           ///< Destination IPv4 Address of the Packet when the Packet is received.
+  bool is_arp_request;          ///< True if it is an ARP Request; False otherwise.
+} SwitchPacketMetadata;
+
+
+  
 /**
  * \ingroup openflow
  * \brief A net device that switches multiple LAN segments via an OpenFlow-compatible flow table
@@ -79,12 +132,6 @@ namespace ns3 {
  * to an Ipv4 or Ipv6 layer will cause an error. It also must support a SendFrom
  * call.
  */
-
-enum PortlandSwitchType {
-    EDGE = 1,
-    AGGREGATION,
-    CORE
-  };
 
 
 /**
@@ -200,8 +247,6 @@ public:
 
   uint8_t GetPosition (void) const;
 
-  Mac48Address GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper); 
-  Mac48Address GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 
   // From NetDevice
   virtual void SetIfIndex (const uint32_t index);
@@ -239,7 +284,9 @@ protected:
       int FindPort(const Mac48Address& pmac) const;
       int FindPort(const Ipv4Address& ip_address) const;
       Mac48Address FindAMAC(const Mac48Address& pmac) const;
+      Mac48Address FindAMAC(const Ipv4Address& ip_address) const;
       Mac48Address FindPMAC(const Mac48Address& amac) const;
+      Mac48Address FindPMAC(const Ipv4Address& ip_address) const;
       void clear();
 
     private:
@@ -275,20 +322,35 @@ protected:
    * \param protocol The protocol defining the packet.
    * \return The OpenFlow Buffer created from the packet.
    */
-  pld::SwitchPacketMetadata MetadataFromPacket (Ptr<const Packet> packet, Address src, Address dst, uint16_t protocol);
+  SwitchPacketMetadata MetadataFromPacket (Ptr<const Packet> packet, Address src, Address dst, uint16_t protocol);
 
 private:
+
+  Mac48Address GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper); 
+  
+  Mac48Address GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
+
+  pld::BufferData SendBufferToFabricManager(pld::BufferData);
+
+  void ReceiveBufferFromFabricManager(pld::BufferData);
+
+  void UpdateFabricManager(Ipv4Address, Mac48Address);
+
+  Mac48Address QueryFabricManager(Ipv4Address, Ipv4Address, Mac48Address);
+
+  void ARPFloodFromFabricManager(Ipv4Address, Ipv4Address, Mac48Address);
+
   /**
    * Sends a copy of the Packet over the provided output port
    *
    * \param packet_uid Packet UID; used to fetch the packet and its metadata.
    */
-  void PortlandSwitchNetDevice::OutputPacket (ns3::pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
+  void OutputPacket (SwitchPacketMetadata metadata, uint8_t out_port, bool is_upper);
 
   /**
    * Gets the output port index based on the destination PMAC address
    */
-  uint8_t GetOutputPort(Mac48Address dst_pmac);
+  int GetOutputPort(Mac48Address dst_pmac);
   
   /// Callbacks
   NetDevice::ReceiveCallback m_rxCallback;
@@ -306,7 +368,7 @@ private:
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 
-  typedef std::map<uint32_t,pld::SwitchPacketMetadata> PacketData_t;
+  typedef std::map<uint32_t,SwitchPacketMetadata> PacketData_t;
   PacketData_t m_packetData;            ///< Packet data
 
   typedef std::vector<pld::Port> Ports_t;

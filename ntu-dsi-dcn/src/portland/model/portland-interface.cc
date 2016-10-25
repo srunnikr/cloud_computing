@@ -197,7 +197,7 @@ FabricManager::FloodARPRequest(ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice
 
   for (set<Ptr<PortlandSwitchNetDevice>>::iterator it = m_switches.begin(); it != m_switches.end(); it++)
   {
-    if (*it->isCore() && *it != swtch)
+    if ((*it)->isCore() && (*it) != swtch)
     {
       SendToSwitch(*it, buffer);
     }

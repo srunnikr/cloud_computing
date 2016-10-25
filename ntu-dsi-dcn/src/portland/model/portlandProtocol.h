@@ -1,9 +1,9 @@
 #ifndef PORTLAND_PROTOCOL_H
-#define PORTLAND_PROTOCOL_H
+#define PORTLAND_PROTOCOL_H 1
 
-#include <string.h>
+#include <cstring>
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
 
 // Packet types
 enum PACKET_TYPE {

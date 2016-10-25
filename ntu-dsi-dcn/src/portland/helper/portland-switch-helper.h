@@ -18,21 +18,22 @@
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
 #ifndef PORTLAND_SWITCH_HELPER_H
-#define PORTLAND_SWITCH_HELPER_H
+#define PORTLAND_SWITCH_HELPER_H 1
 
 #include "ns3/portland-interface.h"
+#include "ns3/portland-switch-net-device.h"
 #include "ns3/net-device-container.h"
 #include "ns3/object-factory.h"
 #include <string>
 
 namespace ns3 {
 
-enum PortlandSwitchType {
+/*enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
   };
-
+*/
 class Node;
 class AttributeValue;
 

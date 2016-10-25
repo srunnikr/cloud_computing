@@ -130,3 +130,4 @@ ENV/
 
 # NS3 project files
 .hg
+.lock-wafbuild
