@@ -19,6 +19,7 @@
 
 #include "portland-interface.h"
 #include "portland-switch-net-device.h"
+#include "portlandProtocol.hs"
 
 namespace ns3 {
 
