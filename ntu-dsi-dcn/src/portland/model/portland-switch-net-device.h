@@ -283,7 +283,7 @@ private:
    *
    * \param packet_uid Packet UID; used to fetch the packet and its metadata.
    */
-  void OutputPacket (uint32_t packet_uid, int out_port);
+  void PortlandSwitchNetDevice::OutputPacket (ns3::pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
 
   /**
    * Gets the output port index based on the destination PMAC address

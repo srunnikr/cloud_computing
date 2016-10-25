@@ -466,7 +466,7 @@ PortlandSwitchDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_p
 Mac48Address
 PortlandSwitchDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 void
-PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, int out_port, bool is_upper);
+PortlandSwitchNetDevice::OutputPacket (ns3::pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
 // Actual callback function called when a packet is received on a switch port (i.e. netdev here)
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
@@ -554,7 +554,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   metadata.dst_pmac = dst_pmac;
                   out_port = GetOutputPort(metadata.dst_pmac);
                   metadata.packet = packet->Copy ();
-                  OutputPacket(metadata, out_port, true);
+                  PortlandSwitchNetDevice::OutputPacket(metadata, out_port, true);
                 }
                 else if (m_device_type == AGGREGATION)
                 {
@@ -628,7 +628,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
 
 // Function to forward a given packet to the specified out port.
 void
-PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, int out_port, bool is_upper)
+PortlandSwitchNetDevice::OutputPacket (ns3::pld::SwitchPacketMetadata metadata, int out_port, bool is_upper)
 {
   Ports_t ports = (is_upper ? m_upper_ports : m_lower_ports);
   if (out_port >= 0 && out_port < ports.size())
