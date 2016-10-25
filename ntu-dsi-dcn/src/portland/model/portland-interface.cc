@@ -134,7 +134,7 @@ FabricManager::isIPRegistered (Ipv4Address ip)
 Mac48Address
 FabricManager::getPMACforIP (Ipv4Address ip)
 {
-  if (isIpRegistered(ip))
+  if (FabricManager::isIpRegistered(ip))
   {
     return IpPMACTable[ip];
   }
@@ -160,7 +160,7 @@ FabricManager::PMACRegisterHandler(PMACRegister* message)
 void
 FabricManager::ARPRequestHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
 {
-  if (isIpRegistered(message->destIPAddress))
+  if (FabricManager::isIpRegistered(message->destIPAddress))
   {
     // IP address present
     ARPResponse* msg = (ARPResponse*) malloc (sizeof(ARPResponse));
