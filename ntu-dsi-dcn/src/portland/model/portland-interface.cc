@@ -179,21 +179,21 @@ FabricManager::ARPRequestHandler(ARPRequest* message, Ptr<PortlandSwitchNetDevic
 }
 
 void
-FabricManager::ARPResponseHandler(ARPResponse* message, Ptr<PortlandSwitchNetDevice> swtch)
+FabricManager::ARPResponseHandler(ARPResponse* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
   BufferData buffer;
   buffer.pkt_type = PKT_ARP_RESPONSE;
-  buffer.msg = message;	
+  buffer.message = msg;	
 
   SendToSwitch(swtch, buffer);
 }
 
 void
-FabricManager::FloodARPRequest(ARPFloodRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
+FabricManager::FloodARPRequest(ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
   BufferData buffer;
   buffer.pkt_type = PKT_ARP_FLOOD;
-  buffer.msg = message;
+  buffer.message = msg;
 
   for (set<Ptr<PortlandSwitchNetDevice>>::iterator it = m_switches.begin(); it != m_switches.end(); it++)
   {
