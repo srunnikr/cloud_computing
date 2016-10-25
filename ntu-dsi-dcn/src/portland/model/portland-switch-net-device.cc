@@ -530,7 +530,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
               {
                 if (m_device_type == EDGE)
                 { 
-                  metadata.src_pmac = FindSourcePMAC (metadata, in_port, from_upper);
+                  metadata.src_pmac = GetSourcePMAC (metadata, in_port, from_upper);
                   if (metadata.src_pmac == GetBroadcast())
                   {
                     return; // drop packet due to error in finding/allocating PMAC
