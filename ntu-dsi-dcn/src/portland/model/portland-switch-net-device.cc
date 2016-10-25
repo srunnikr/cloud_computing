@@ -18,7 +18,6 @@
 //#ifdef NS3_PORTLAND
 
 #include <cstdlib>
-#include <cstdint>
 
 #include "portland-switch-net-device.h"
 #include "ns3/udp-l4-protocol.h"
@@ -57,7 +56,7 @@ PortlandSwitchNetDevice::GetSerialNumber ()
 static uint64_t
 GenerateId ()
 {
-  return (uint64_t)(rand() % UINT64_MAX);
+  return (uint64_t)(rand() % 100);
 }
 
 TypeId
@@ -196,6 +195,18 @@ PortlandSwitchNetDevice::GetDeviceType (void) const
 {
   NS_LOG_FUNCTION_NOARGS ();
   return m_device_type;
+}
+
+bool
+PortlandSwitchNetDevice::IsCore(void)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  if (m_device_type == CORE)
+  {
+    return true;
+  }
+  
+  return false;
 }
 
 void
@@ -669,7 +680,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
   pld::BufferData response_buffer;
   if (m_fabricManager != 0)
   {
-    m_fabricManager->ReceiveFromSwitch(this, request_buffer);
+    response_buffer = m_fabricManager->ReceiveFromSwitch(this, request_buffer);
   }
 
   return response_buffer;
@@ -678,7 +689,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
 void
 PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_buffer)
 {
-  if (request_buffer.pkt_type == PKT_ARP_FLOOD)
+  if (m_device_type == CORE && request_buffer.pkt_type == PKT_ARP_FLOOD)
   {
     pld::ARPFloodRequest* msg = (pld::ARPFloodRequest*)request_buffer.message;
     ARPFloodFromFabricManager(msg->destIPAddress, msg->srcIPAddress, msg->srcPMACAddress);

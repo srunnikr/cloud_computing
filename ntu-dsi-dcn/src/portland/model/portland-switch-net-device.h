@@ -53,13 +53,6 @@
 namespace ns3 {
 
 
-enum PortlandSwitchType {
-    EDGE = 1,
-    AGGREGATION,
-    CORE
-  };   
-
-
 /**
  * \brief Port and its metadata.
  */
@@ -83,6 +76,9 @@ struct Port
   unsigned long long int rx_bytes, tx_bytes;
   unsigned long long int tx_dropped;
 };
+
+class FabricManager;
+struct BufferData;
 
 }
 
@@ -170,7 +166,7 @@ public:
   PortlandSwitchNetDevice ();
   
   // Constructor -- with device_type, pod and position
-  PortlandSwitchNetDevice(PortlandSwitchType& device_type, uint8_t& pod, uint8_t& position);
+  //PortlandSwitchNetDevice(PortlandSwitchType& device_type, uint8_t& pod, uint8_t& position);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
@@ -216,7 +212,7 @@ public:
    * \param length Length of the message.
    * \return 0 if everything's ok, otherwise an error number.
    */
-  int ForwardControlInput (pld::BufferData buffer);
+  //int ForwardControlInput (pld::BufferData buffer);
 
   /**
    * \return Number of switch ports attached to this switch.
@@ -238,6 +234,8 @@ public:
   void SetDeviceType (const PortlandSwitchType device_type);
 
   PortlandSwitchType GetDeviceType (void) const;
+  
+  bool IsCore(void);
 
   void SetPod (const uint8_t pod);
 
@@ -246,6 +244,8 @@ public:
   void SetPosition (const uint8_t position);
 
   uint8_t GetPosition (void) const;
+  
+  void ReceiveBufferFromFabricManager(pld::BufferData);
 
 
   // From NetDevice
@@ -331,8 +331,6 @@ private:
   Mac48Address GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 
   pld::BufferData SendBufferToFabricManager(pld::BufferData);
-
-  void ReceiveBufferFromFabricManager(pld::BufferData);
 
   void UpdateFabricManager(Ipv4Address, Mac48Address);
 

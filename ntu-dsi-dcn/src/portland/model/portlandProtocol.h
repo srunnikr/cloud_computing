@@ -5,6 +5,9 @@
 #include <iostream>
 #include <cstdlib>
 
+namespace ns3
+{
+
 // Packet types
 enum PACKET_TYPE {
 	PKT_MAC_REGISTER = 1,
@@ -13,4 +16,11 @@ enum PACKET_TYPE {
 	PKT_ARP_FLOOD
 };
 
+enum PortlandSwitchType {
+    EDGE = 1,
+    AGGREGATION,
+    CORE
+  };
+
+}
 #endif
