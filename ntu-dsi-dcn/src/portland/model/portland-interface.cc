@@ -75,17 +75,17 @@ FabricManager::GetTypeId (void)
 void
 FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
-  PACKET_TYPE packet_type = GetPacketType(buffer);
+  PACKET_TYPE packet_type = (PACKET_TYPE) GetPacketType(buffer);
   switch (packet_type)
   {
     case PKT_MAC_REGISTER:
-    PMACRegister* message = (PMACRegister*) (buffer.message);
-    PMACRegisterHandler(message);
+    //PMACRegister* message = (PMACRegister*) (buffer.message);
+    //PMACRegisterHandler(message);
     break;
 
     case PKT_ARP_REQUEST:
-    ARPRequest* message = (ARPRequest*) (buffer.message);
-    ARPRequestHandler(message, swtch);
+    //ARPRequest* message = (ARPRequest*) (buffer.message);
+    //ARPRequestHandler(message, swtch);
     break;
 
     case PKT_ARP_RESPONSE:  
@@ -195,9 +195,9 @@ FabricManager::FloodARPRequest(ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice
   buffer.pkt_type = PKT_ARP_FLOOD;
   buffer.message = msg;
 
-  for (set<Ptr<PortlandSwitchNetDevice>>::iterator it = m_switches.begin(); it != m_switches.end(); it++)
+  for (std::set<Ptr<PortlandSwitchNetDevice> >::iterator it = m_switches.begin(); it != m_switches.end(); it++)
   {
-    if (*it->isCore() && *it != swtch)
+    if (*it->GetDeviceType() == pld::CORE && *it != swtch)
     {
       SendToSwitch(*it, buffer);
     }

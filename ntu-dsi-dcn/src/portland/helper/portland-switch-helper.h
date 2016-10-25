@@ -27,11 +27,11 @@
 
 namespace ns3 {
 
-enum PortlandSwitchType {
+/*enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
-  };
+  };*/
 
 class Node;
 class AttributeValue;
@@ -74,7 +74,7 @@ public:
   
   NetDeviceContainer
   Install (Ptr<Node> node, NetDeviceContainer lowerDevices, NetDeviceContainer upperDevices, Ptr<ns3::pld::FabricManager> fabric_manager,
-	PortlandSwitchType device_type, uint8_t pod, uint8_t position);
+	pld::PortlandSwitchType device_type, uint8_t pod, uint8_t position);
   
   /**
    * This method creates an ns3::PortlandSwitchNetDevice with the attributes

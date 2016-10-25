@@ -44,13 +44,11 @@ namespace ns3 {
 class PortlandSwitchNetDevice;
 
 namespace pld {
-/*
 enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
   };
-*/
 
 /**
  * \brief Port and its metadata.

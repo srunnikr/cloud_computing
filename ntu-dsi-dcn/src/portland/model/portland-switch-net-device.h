@@ -80,12 +80,12 @@ namespace ns3 {
  * call.
  */
 
-enum PortlandSwitchType {
+/*enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,
     CORE
-  };
-
+};
+*/
 
 /**
  * \ingroup openflow 
@@ -123,7 +123,7 @@ public:
   PortlandSwitchNetDevice ();
   
   // Constructor -- with device_type, pod and position
-  PortlandSwitchNetDevice(PortlandSwitchType& device_type, uint8_t& pod, uint8_t& position);
+  PortlandSwitchNetDevice(pld::PortlandSwitchType& device_type, uint8_t& pod, uint8_t& position);
   virtual ~PortlandSwitchNetDevice ();
 
   /**
@@ -132,6 +132,9 @@ public:
    * \param c Pointer to a Controller.
    */
   void SetFabricManager (Ptr<pld::FabricManager> c);
+  void UpdateFabricManager(Ipv4Address src_ip, Mac48Address src_pmac);
+  Mac48Address QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
+  void ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 
   /**
    * \brief Add a 'port' to a switch device
@@ -188,9 +191,9 @@ public:
    */
   pld::Port GetSwitchPort (uint32_t n) const;
 
-  void SetDeviceType (const PortlandSwitchType device_type);
+  void SetDeviceType (const pld::PortlandSwitchType device_type);
 
-  PortlandSwitchType GetDeviceType (void) const;
+  pld::PortlandSwitchType GetDeviceType (void);
 
   void SetPod (const uint8_t pod);
 
@@ -200,7 +203,7 @@ public:
 
   uint8_t GetPosition (void) const;
 
-  Mac48Address GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper); 
+  Mac48Address GetSourcePMAC (pld::SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper); 
   Mac48Address GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
 
   // From NetDevice
@@ -236,10 +239,11 @@ protected:
     public:
       void Add(const Mac48Address& pmac, const Mac48Address& amac, const Ipv4Address ip_address, const uint32_t port);
       void Remove(const Mac48Address& amac);
-      int FindPort(const Mac48Address& pmac) const;
-      int FindPort(const Ipv4Address& ip_address) const;
-      Mac48Address FindAMAC(const Mac48Address& pmac) const;
-      Mac48Address FindPMAC(const Mac48Address& amac) const;
+      int FindPort(const Mac48Address& pmac);
+      int FindPort(const Ipv4Address& ip_address);
+      Mac48Address FindAMAC(const Mac48Address& pmac);
+      Mac48Address FindPMAC(const Mac48Address& amac);
+      Mac48Address FindPMAC(const Ipv4Address& dst_ip);
       void clear();
 
     private:
@@ -249,6 +253,7 @@ protected:
         Ipv4Address ip_address;
         uint8_t port;
       } PMACEntry;
+      
       std::map<Mac48Address, PMACEntry> mapping; // PMAC -> <AMAC, IP, Port> mapping
   };
 
@@ -283,7 +288,7 @@ private:
    *
    * \param packet_uid Packet UID; used to fetch the packet and its metadata.
    */
-  void PortlandSwitchNetDevice::OutputPacket (ns3::pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
+  void OutputPacket (pld::SwitchPacketMetadata metadata, int out_port, bool is_upper);
 
   /**
    * Gets the output port index based on the destination PMAC address
@@ -302,7 +307,7 @@ private:
   
   /// These are to be set during initialization of the device
   /// Used in PortlandSwitchNetDevice::GetOutputPort
-  PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
+  pld::PortlandSwitchType m_device_type;                  ///< Device type: 3 - Core, 2 - Aggregate, 1 - Edge
   uint8_t m_pod;                          ///< Pod in which the device is located -- valid for only device_type 1 or 2
   uint8_t m_position;                     ///< Position of the device in the pod -- valid for only device_type 1 or 2
 

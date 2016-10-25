@@ -67,7 +67,7 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pl
 
 NetDeviceContainer
 PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer lowerDevices, NetDeviceContainer upperDevices, Ptr<ns3::pld::FabricManager> fabric_manager, 
-                                PortlandSwitchType device_type, uint8_t pod, uint8_t position)
+                                pld::PortlandSwitchType device_type, uint8_t pod, uint8_t position)
 {
   NS_LOG_FUNCTION_NOARGS ();
   NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());

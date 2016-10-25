@@ -1,25 +1,5 @@
-// Construction of Fat-tree Architecture
-// Authors: Linh Vu, Daji Wong
-
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2013 Nanyang Technological University 
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Authors: Linh Vu <linhvnl89@gmail.com>, Daji Wong <wong0204@e.ntu.edu.sg>
- */
+// Construction of Portland Architecture
+// Authors: The UCSD clound computing team
 
 #include <iostream>
 #include <fstream>
@@ -39,10 +19,9 @@
 #include "ns3/ipv4-nix-vector-helper.h"
 #include "ns3/random-variable.h"
 #include "ns3/portland-module.h"
-//#include "ns3/portland-switch-helper.h"
 
 /*
-	- This work goes along with the paper "Towards Reproducible Performance Studies of Datacenter Network Architectures Using An Open-Source Simulation Approach"
+	- This work is done towards CSE 291G course project
 
 	- The code is constructed in the following order:
 		1. Creation of Node Containers 
@@ -74,7 +53,7 @@
 
 
         - Statistics Output:
-                - Flowmonitor XML output file: Fat-tree-AlFares.xml is located in the /statistics folder
+                - Flowmonitor XML output file: Portland.xml is located in the /statistics folder
                  
 
 
@@ -128,10 +107,10 @@ int
 	int num_edge = (k/2);		// number of edge switch in a pod
 	int num_bridge = num_edge;	// number of bridge in a pod
 	int num_agg = (k/2);		// number of aggregation switch in a pod
-	int num_group = k/2;		// number of group of core switches
-        int num_core = (k/2);		// number of core switch in a group
+	int num_group = (k/2);		// number of group of core switches
+    int num_core = (k/2);		// number of core switch in a group
 	int total_host = k*k*k/4;	// number of hosts in the entire network	
-	char filename [] = "statistics/Fat-tree-AlFares.xml";// filename for Flow Monitor xml output file
+	char filename [] = "statistics/Portland.xml";// filename for Flow Monitor xml output file
 
 // Define variables for On/Off Application
 // These values will be used to serve the purpose that addresses of server and client are selected randomly
@@ -185,28 +164,30 @@ int
 	
 	PortlandSwitchHelper psh;
 	Ptr<pld::FabricManager> fm;
-	NetDeviceContainer testNetDeviceContainer;
 //=========== Creation of Node Containers ===========//
 //
 	NodeContainer core[num_group];				// NodeContainer for core switches
+	NetDeviceContainer core_dev[num_group][num_core];
 	for (i=0; i<num_group;i++){  	
 		core[i].Create (num_core);
 		for(j=0; j<num_core;j++){
-			psh.Install (core[i].Get(j),testNetDeviceContainer,fm,pld::CORE,0,0);
+			psh.Install (core[i].Get(j),core_dev[i][j],fm,pld::CORE,0,0);
 		}		
 	}
 	NodeContainer agg[num_pod];				// NodeContainer for aggregation switches
+	NetDeviceContainer agg_dev[num_group][num_core];
 	for (i=0; i<num_pod;i++){  	
 		agg[i].Create (num_agg);
 		for(j=0; j<num_agg;j++){
-			psh.Install (agg[i].Get(j),testNetDeviceContainer,fm, pld::AGGREGATION,i,j);
+			psh.Install (agg[i].Get(j),agg_dev[i][j],fm, pld::AGGREGATION,i,j);
 		}
 	}
 	NodeContainer edge[num_pod];				// NodeContainer for edge switches
-  	for (i=0; i<num_pod;i++){  	
-		edge[i].Create (num_bridge);
-		for(j=0; j<num_bridge;j++){
-			psh.Install (edge[i].Get(j),testNetDeviceContainer,fm, pld::EDGE,i,j);
+  	NetDeviceContainer edge_dev[num_group][num_core];
+	for (i=0; i<num_pod;i++){  	
+		edge[i].Create (num_edge);
+		for(j=0; j<num_edge;j++){
+			psh.Install (edge[i].Get(j),edge_dev[i][j],fm, pld::EDGE,i,j);
 		}	
 	}
 	/*
@@ -283,7 +264,7 @@ int
 //=========== Connect edge switches to hosts ===========//
 //	
 	NetDeviceContainer hostSw[num_pod][num_bridge];		
-	NetDeviceContainer bridgeDevices[num_pod][num_bridge];	
+	//NetDeviceContainer bridgeDevices[num_pod][num_bridge];	
 	Ipv4InterfaceContainer ipContainer[num_pod][num_bridge];
 
 	for (i=0;i<num_pod;i++){
@@ -295,7 +276,7 @@ int
 			for (h=0; h< num_host;h++){			
 				NetDeviceContainer link2 = p2p.Install (NodeContainer (host[i][j].Get(h), edge[i].Get(j)));
 				hostSw[i][j].Add(link2.Get(0));			
-				bridgeDevices[i][j].Add(link2.Get(1));						
+				edge_dev[i][j].Add(link2.Get(1));						
 			}
 		//Assign address
 			char *subnet;
@@ -308,12 +289,12 @@ int
 
 //=========== Connect aggregate switches to edge switches ===========//
 //
-	NetDeviceContainer ae[num_pod][num_agg][num_edge]; 	
+	//NetDeviceContainer ae[num_pod][num_agg][num_edge]; 	
 	Ipv4InterfaceContainer ipAeContainer[num_pod][num_agg][num_edge];
 	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_agg;j++){
 			for (h=0;h<num_edge;h++){
-				ae[i][j][h] = p2p.Install(agg[i].Get(j), edge[i].Get(h));
+				agg_dev[i][j][h] = p2p.Install(agg[i].Get(j), edge[i].Get(h));
 
 				int second_octet = i;		
 				int third_octet = j+(k/2);	
@@ -335,7 +316,7 @@ int
 
 //=========== Connect core switches to aggregate switches ===========//
 //
-	NetDeviceContainer ca[num_group][num_core][num_pod]; 		
+	//NetDeviceContainer ca[num_group][num_core][num_pod]; 		
 	Ipv4InterfaceContainer ipCaContainer[num_group][num_core][num_pod];
 	int fourth_octet =1;
 	
@@ -343,7 +324,7 @@ int
 		for (j=0; j < num_core; j++){
 			fourth_octet = 1;
 			for (h=0; h < num_pod; h++){			
-				ca[i][j][h] = p2p.Install(core[i].Get(j), agg[h].Get(i)); 	
+				core_dev[i][j][h] = p2p.Install(core[i].Get(j), agg[h].Get(i)); 	
 
 				int second_octet = k+i;		
 				int third_octet = j;
