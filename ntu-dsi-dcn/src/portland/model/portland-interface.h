@@ -75,7 +75,7 @@ struct Port
 /**
  * \brief Packet Metadata, allows us to track the packet's metadata as it passes through the switch.
  */
-struct SwitchPacketMetadata
+typedef struct SwitchPacketMetadata
 {
   Ptr<Packet> packet;
   uint16_t protocol_number;     ///< Protocol type of the Packet when the Packet is received
@@ -85,7 +85,7 @@ struct SwitchPacketMetadata
   Ipv4Address src_ip;           ///< Source IPv4 Address of the Packet when the Packet is received
   Ipv4Address dst_ip;           ///< Destination IPv4 Address of the Packet when the Packet is received.
   bool is_arp_request;          ///< True if it is an ARP Request; False otherwise.
-};
+} SwitchPacketMetadata;
 
 // Message information for fabric manager
 typedef struct BufferData {
