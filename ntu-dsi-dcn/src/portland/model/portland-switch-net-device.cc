@@ -591,7 +591,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   else
                   {
                     Mac48Address dst_amac = PortlandSwitchNetDevice::PMACTable::FindAMAC(metadata.dst_pmac);
-                    if (dst_pmac == GetBroadcast ())
+                    if (dst_amac == GetBroadcast ())
                     {
                       return; // drop packet due to error (AMAC never seen)
                     }
