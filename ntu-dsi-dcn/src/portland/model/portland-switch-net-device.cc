@@ -461,6 +461,12 @@ PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Addr
   return metadata;
 }
 
+Mac48Address
+PortlandSwitchDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper);
+Mac48Address
+PortlandSwitchDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac);
+void
+PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, int out_port, bool is_upper);
 // Actual callback function called when a packet is received on a switch port (i.e. netdev here)
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
