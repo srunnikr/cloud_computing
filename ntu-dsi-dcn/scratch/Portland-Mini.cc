@@ -106,11 +106,19 @@ main (int argc, char *argv[])
   //
   NS_LOG_INFO ("Create nodes.");
   NodeContainer terminals;
-  terminals.Create (4);
+  terminals.Create (2);
 
-  NodeContainer portlandSwitch;
-  portlandSwitch.Create (1);
-
+  NodeContainer edgeSwitch1;
+  edgeSwitch1.Create(1);
+  NodeContainer edgeSwitch2;
+  edgeSwitch2.Create(1);
+  NodeContainer aggSwitch1;
+  aggSwitch1.Create(1);
+  NodeContainer aggSwitch2;
+  aggSwitch2.Create(1);
+  NodeContainer coreSwitch;
+  coreSwitch.Create(1);
+  
   NS_LOG_INFO ("Build Topology");
   // CsmaHelper csma;
   // csma.SetChannelAttribute ("DataRate", DataRateValue (5000000));
@@ -121,25 +129,60 @@ main (int argc, char *argv[])
   csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (2)));
 
   // Create the csma links, from each terminal to the switch
-  NetDeviceContainer terminalDevices;
-  NetDeviceContainer switchDevices;
+  NetDeviceContainer terminalDevices1;
+  NetDeviceContainer terminalDevices2;
+  NetDeviceContainer edgeDev1;
+  NetDeviceContainer edgeDev2;
+  NetDeviceContainer aggregationDev1;
+  NetDeviceContainer aggregationDev2;
+  NetDeviceContainer coreDev; 
   
+    NetDeviceContainer link1 = csma.Install (NodeContainer(terminals.Get (0), edgeSwitch1));
+    terminalDevices1.Add (link1.Get (0));
+    edgeDev1.Add (link1.Get (1));
   
-  for (int i = 0; i < 4; i++)
-  {
-    NetDeviceContainer link = csma.Install (NodeContainer(terminals.Get (i), portlandSwitch));
-    terminalDevices.Add (link.Get (0));
-    switchDevices.Add (link.Get (1));
-  }
+    NetDeviceContainer link2 = csma.Install (NodeContainer(terminals.Get (1), edgeSwitch2));
+    terminalDevices1.Add (link2.Get (0));
+    edgeDev2.Add (link2.Get (1));
+	
+	NetDeviceContainer link3 = csma.Install (NodeContainer(edgeSwitch1, aggSwitch1));
+    edgeDev1.Add (link3.Get (0));
+    aggregationDev1.Add (link3.Get (1));
 
+	NetDeviceContainer link4 = csma.Install (NodeContainer(aggSwitch1, coreSwitch));
+    aggregationDev1.Add (link4.Get (0));
+    coreDev.Add (link4.Get (1));
+	
+	NetDeviceContainer link5 = csma.Install (NodeContainer(coreSwitch, aggSwitch2));
+    coreDev.Add (link5.Get (0));
+    aggregationDev2.Add (link5.Get (1));
+
+	NetDeviceContainer link6 = csma.Install (NodeContainer(aggSwitch2, edgeSwitch2));
+    aggregationDev2.Add (link6.Get (0));
+	edgeDev2.Add (link6.Get (1));
+  
   // Create the switch netdevice, which will do the packet switching
-  Ptr<Node> switchNode = portlandSwitch.Get (0);
-
-  PortlandSwitchHelper swtch;
-
+  Ptr<Node> edgenode1 = edgeSwitch1.Get (0);
+  Ptr<Node> edgenode2 = edgeSwitch2.Get (0);
+  Ptr<Node> aggnode1 = aggSwitch1.Get (0);
+  Ptr<Node> aggnode2 = aggSwitch2.Get (0);
+  Ptr<Node> corenode = coreSwitch.Get (0);
+  
+  PortlandSwitchHelper swtche1;
+  PortlandSwitchHelper swtche2;
+  PortlandSwitchHelper swtcha1;
+  PortlandSwitchHelper swtcha2;
+  PortlandSwitchHelper swtchc;
+  
+  NetDeviceContainer WAN;
+  
   Ptr<ns3::pld::FabricManager> fabricManager = Create<ns3::pld::FabricManager> ();
-  swtch.Install(switchNode, switchDevices, fabricManager);
-
+  swtche1.Install(edgenode1, edgeDev1, aggregationDev1, fabricManager, EDGE, 0, 0);
+  swtche2.Install(edgenode2, edgeDev2, aggregationDev2, fabricManager, EDGE, 1, 0);
+  swtcha1.Install(aggnode1, aggregationDev1, coreDev, fabricManager, AGGREGATION, 0, 0);
+  swtcha2.Install(aggnode2, aggregationDev2, coreDev, fabricManager, AGGREGATION, 1, 0);
+  swtchc.Install(corenode, coreDev, WAN, fabricManager, CORE, 0, 0);
+  	
   /*
   if (use_drop)
     {
@@ -162,8 +205,8 @@ main (int argc, char *argv[])
   NS_LOG_INFO ("Assign IP Addresses.");
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-  ipv4.Assign (terminalDevices);
-
+  ipv4.Assign (terminalDevices1);
+  ipv4.Assign (terminalDevices2);	
   // Create an OnOff application to send UDP datagrams from n0 to n1.
   NS_LOG_INFO ("Create Applications.");
   uint16_t port = 9;   // Discard port (RFC 863)
@@ -181,7 +224,7 @@ main (int argc, char *argv[])
   // Create an optional packet sink to receive these packets
   PacketSinkHelper sink ("ns3::UdpSocketFactory",
                          Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-  app = sink.Install (terminals.Get (1));
+  app = sink.Install (terminals.Get(0));
   app.Start (Seconds (0.0));
 
   //
@@ -189,11 +232,11 @@ main (int argc, char *argv[])
   //
   onoff.SetAttribute ("Remote",
                       AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
-  app = onoff.Install (terminals.Get (3));
+  app = onoff.Install (terminals.Get (0));
   app.Start (Seconds (1.1));
   app.Stop (Seconds (10.0));
 
-  app = sink.Install (terminals.Get (0));
+  app = sink.Install (terminals.Get (1));
   app.Start (Seconds (0.0));
 
   NS_LOG_INFO ("Configure Tracing.");

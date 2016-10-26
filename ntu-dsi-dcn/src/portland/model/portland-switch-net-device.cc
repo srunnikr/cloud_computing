@@ -528,7 +528,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
           }
         else
           {
-            if (packetType != PACKET_OTHERHOST)
+            if (packetType == PACKET_OTHERHOST)
               {
                 m_rxCallback (this, packet, protocol, src);
               }
@@ -682,7 +682,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
   {
     response_buffer = m_fabricManager->ReceiveFromSwitch(this, request_buffer);
   }
-
+  NS_LOG_UNCOND("Received response from FM");
   return response_buffer;
 }
 
@@ -713,7 +713,9 @@ PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address sr
   buffer.pkt_type = PKT_MAC_REGISTER;
   buffer.message = msg;
 
-  SendBufferToFabricManager(buffer);
+  pld::BufferData buf = SendBufferToFabricManager(buffer);
+  free(buf.message);
+  NS_LOG_UNCOND("EOF UpdateFabricManager");
 }
 
 Mac48Address
@@ -817,7 +819,7 @@ Mac48Address
 PortlandSwitchNetDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper)
 {
   // port checking
-  if ((from_upper && in_port < m_upper_ports.size()) || (!from_upper && in_port < m_lower_ports.size()))
+  if ((from_upper && !(in_port < m_upper_ports.size())) || (!from_upper && !(in_port < m_lower_ports.size())))
   {
     NS_LOG_INFO("Illegal in-port" << in_port);
     return Mac48Address("ff:ff:ff:ff:ff:ff");
@@ -854,6 +856,7 @@ PortlandSwitchNetDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t i
     // register this entry with fabric manager
     UpdateFabricManager(src_ip, src_pmac);
   }
+  NS_LOG_UNCOND("SourcePMAC" << src_pmac);
   
   return src_pmac;
 }
@@ -962,6 +965,7 @@ PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) cons
     {
       return (it->second).port;
     }
+    it++;
   }
 
   return -1;
@@ -988,6 +992,7 @@ PortlandSwitchNetDevice::PMACTable::FindAMAC(const Ipv4Address& ip_address) cons
     {
       return (it->second).amac;
     }
+    it++;
   }
 
   return Mac48Address("ff:ff:ff:ff:ff:ff");
@@ -1003,6 +1008,7 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
     {
       return it->first;
     }
+    it++;
   }
 
   return Mac48Address("ff:ff:ff:ff:ff:ff");
@@ -1019,6 +1025,7 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Ipv4Address& ip_address) cons
     {
       return it->first;
     }
+    it++;
   }
 
   return Mac48Address("ff:ff:ff:ff:ff:ff");
