@@ -363,7 +363,7 @@ bool
 PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const Address& dest, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION_NOARGS ();
-  NS_LOG_UNCOND ("In PortlandSwitchNetDevice::SendFrom()");
+  //// NS_LOG_UNCOND ("In PortlandSwitchNetDevice::SendFrom()");
   return true;
 }
 
@@ -691,7 +691,7 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
   {
     response_buffer = m_fabricManager->ReceiveFromSwitch(this, request_buffer);
   }
-  NS_LOG_UNCOND("Received response from FM");
+  // NS_LOG_UNCOND("Received response from FM");
   return response_buffer;
 }
 
@@ -707,7 +707,7 @@ PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_
   {
     // no-op
   }
-  NS_LOG_UNCOND("Finished ReceiveBufferFromFabricManager");
+  // NS_LOG_UNCOND("Finished ReceiveBufferFromFabricManager");
 }
 
 void
@@ -723,7 +723,7 @@ PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address sr
 
   pld::BufferData buf = SendBufferToFabricManager(buffer);
   free(buf.message);
-  NS_LOG_UNCOND("EOF UpdateFabricManager");
+  // NS_LOG_UNCOND("EOF UpdateFabricManager");
 }
 
 Mac48Address
@@ -754,7 +754,7 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
   {
     ArpHeader arp;
     Ptr<Packet> packet = Create<Packet> ();
-    NS_LOG_UNCOND ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
+    // NS_LOG_UNCOND ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
     //             " || src: " << src_pmac << " / " << src_ip <<
     //             " || dst: " << Mac48Address::ConvertFrom(GetBroadcast ()) << " / " << dst_ip);
     arp.SetRequest ((Address)src_pmac, src_ip, GetBroadcast(), dst_ip);
@@ -767,7 +767,7 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
       OutputPacket(metadata, i, false);
     }
   }
-  NS_LOG_UNCOND("Finished ARPFloodFromFabricManager");
+  // NS_LOG_UNCOND("Finished ARPFloodFromFabricManager");
 }
 
 // Function that gets the output port index based on destination PMAC address
@@ -865,7 +865,7 @@ PortlandSwitchNetDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t i
     // register this entry with fabric manager
     UpdateFabricManager(src_ip, src_pmac);
   }
-  NS_LOG_UNCOND("SourcePMAC" << src_pmac);
+  // NS_LOG_UNCOND("SourcePMAC" << src_pmac);
   
   return src_pmac;
 }

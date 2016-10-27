@@ -26,7 +26,7 @@
 #include "ns3/node.h"
 #include "ns3/names.h"
 
-//NS_LOG_COMPONENT_DEFINE ("PortlandSwitchHelper");
+NS_LOG_COMPONENT_DEFINE ("PortlandSwitchHelper");
 
 namespace ns3 {
 
