@@ -363,7 +363,7 @@ bool
 PortlandSwitchNetDevice::SendFrom (Ptr<Packet> packet, const Address& src, const Address& dest, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION_NOARGS ();
-
+  NS_LOG_UNCOND ("In PortlandSwitchNetDevice::SendFrom()");
   return true;
 }
 
@@ -481,6 +481,16 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
   NS_LOG_INFO ("--------------------------------------------");
   NS_LOG_DEBUG ("UID is " << packet->GetUid ());
 
+  if (m_device_type == AGGREGATION) {
+	NS_LOG_INFO ("On aggrgate switch");
+  } else if (m_device_type == CORE) {
+	NS_LOG_INFO ("On Core switch");
+  } else if (m_device_type == EDGE) {
+	NS_LOG_INFO ("On edge switch");
+  } else {
+	NS_LOG_INFO ("wrong switch");
+  }
+
   if (!m_promiscRxCallback.IsNull ())
     {
       m_promiscRxCallback (this, packet, protocol, src, dst, packetType);
@@ -488,7 +498,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
 
   Mac48Address dst_mac = Mac48Address::ConvertFrom (dst);
   Mac48Address src_mac = Mac48Address::ConvertFrom (src);
-  NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac);
+  //NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac);
 
   bool from_upper = false;
   uint8_t in_port;
@@ -515,7 +525,8 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
         }
     }
 
-    
+   NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac << "from_upper? " << from_upper); 
+
     if (packetType == PACKET_HOST && dst_mac == m_address)
       {
         m_rxCallback (this, packet, protocol, src);
@@ -543,22 +554,25 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                 if (m_device_type == EDGE)
                 { 
                   metadata.src_pmac = GetSourcePMAC (metadata, in_port, from_upper);
-                  if (metadata.src_pmac == GetBroadcast())
+                  if (metadata.src_pmac == Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast()*/)
                   {
+					NS_LOG_INFO ("Drop packet 1 ");
                     return; // drop packet due to error in finding/allocating PMAC
                   }
                   
                   // Query for dst_pmac based on dst_ip from local table and/or Fabric Manager
                   Mac48Address dst_pmac = GetDestinationPMAC (metadata.dst_ip, metadata.src_ip, metadata.src_pmac);
                   // if dst_pmac is broadcast => failed to find dst_pmac; Fabric Manager will broadcast ARP Request
-                  if (dst_pmac == GetBroadcast ())
+                  if (dst_pmac == Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast ()*/)
                   {
+					NS_LOG_INFO ("Drop packet 2 ");
                     return; // drop ARP Request here as it will be re-created at CORE switches
                   }
                   
                   metadata.dst_pmac = dst_pmac;
                   int out_port = GetOutputPort(metadata.dst_pmac);
                   if (out_port < 0) {
+					NS_LOG_INFO ("Drop packet 3 ");
                     return;
                   }
                   metadata.packet = packet->Copy ();
@@ -569,6 +583,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   // basic forwarding
                   out_port = GetOutputPort(metadata.dst_pmac);
                   if (out_port < 0) {
+					NS_LOG_INFO ("Drop packet 4 ");
                     return;
                   }
                   metadata.packet = packet->Copy ();
@@ -579,6 +594,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   // basic forwarding
                   out_port = GetOutputPort(metadata.dst_pmac);
                   if (out_port < 0) {
+					NS_LOG_INFO ("Drop packet 5 ");
                     return;
                   }
                   metadata.packet = packet->Copy ();
@@ -587,6 +603,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                 else
                 {
                   // no-op; not valid switch type
+					NS_LOG_INFO ("Drop packet 6 ");
                   return;
                 }
               }
@@ -594,7 +611,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
               {
                 if (m_device_type == EDGE)
                 { 
-                  if (metadata.dst_pmac == GetBroadcast())
+                  if (metadata.dst_pmac == Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast()*/)
                   {
                     for (size_t i = 0; i < m_lower_ports.size(); i++)
                     {
@@ -605,13 +622,15 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   else
                   {
                     Mac48Address dst_amac = m_table.FindAMAC(metadata.dst_pmac);
-                    if (dst_amac == GetBroadcast ())
+                    if (dst_amac == Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast ()*/)
                     {
+						NS_LOG_INFO ("Drop packet 7 ");
                       return; // drop packet due to error (AMAC never seen)
                     }
 
                     out_port = GetOutputPort(metadata.dst_pmac);
                     if (out_port < 0) {
+						NS_LOG_INFO ("Drop packet 8 ");
                       return;
                     }
                     metadata.dst_pmac = dst_amac; // re-write dst_amac and forward to port
@@ -624,6 +643,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   // basic forwarding
                   out_port = GetOutputPort(metadata.dst_pmac);
                   if (out_port < 0) {
+					NS_LOG_INFO ("Drop packet 9 ");
                     return;
                   }
                   metadata.packet = packet->Copy ();
@@ -631,12 +651,14 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                 }
                 else if (m_device_type == CORE)
                 {
+					NS_LOG_INFO ("Drop packet 10 ");
                   // no-op; as for CORE switch from_upper = false always so this case should never happen
                   return;
                 }
                 else
                 {
                   // no-op; invalid switch type
+					NS_LOG_INFO ("Drop packet 11 ");
                   return;
                 }
               }
@@ -746,13 +768,13 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
   {
     ArpHeader arp;
     Ptr<Packet> packet = Create<Packet> ();
-    NS_LOG_LOGIC ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
+    NS_LOG_UNCOND ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
                  " || src: " << src_pmac << " / " << src_ip <<
-                 " || dst: " << GetBroadcast () << " / " << dst_ip);
-    arp.SetRequest (src_pmac, src_ip, GetBroadcast (), dst_ip);
+                 " || dst: " << Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast ()*/ << " / " << dst_ip);
+    arp.SetRequest (src_pmac, src_ip, Mac48Address("00:00:00:00:00:00") /*GetBroadcast ()*/, dst_ip);
     packet->AddHeader (arp);
 
-    SwitchPacketMetadata metadata = MetadataFromPacket (packet->Copy (), src_pmac, GetBroadcast(), ArpL3Protocol::PROT_NUMBER);
+    SwitchPacketMetadata metadata = MetadataFromPacket (packet->Copy (), src_pmac, Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast()*/, ArpL3Protocol::PROT_NUMBER);
     for (size_t i = 0; i < m_lower_ports.size(); i++)
     {
       metadata.packet = packet->Copy ();
