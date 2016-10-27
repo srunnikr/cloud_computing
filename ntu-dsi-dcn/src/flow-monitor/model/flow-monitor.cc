@@ -482,6 +482,42 @@ FlowMonitor::SerializeToXmlFile (std::string fileName, bool enableHistograms, bo
   os.close ();
 }
 
+void
+ FlowMonitor::PrintAggregatedStatistics()
+ {
+ 	uint32_t txPackets = 0;
+ 	uint32_t rxPackets = 0;
+ 	uint32_t droppedPackets = 0;
+ 	uint32_t lostPackets = 0;
+ 	uint32_t rxBytes = 0;
+ 	double delaySum = 0;
+ 	double avgThroughput = 0;
+ 
+ 	for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter = m_flowStats.begin(); iter != m_flowStats.end(); ++iter)
+ 	{
+ 		txPackets += iter->second.txPackets;
+ 		rxPackets += iter->second.rxPackets;
+ 		lostPackets = txPackets - rxPackets;
+ 		droppedPackets += iter->second.packetsDropped.size();
+ 		delaySum += iter->second.delaySum.GetSeconds();
+ 		rxBytes += iter->second.rxBytes;
+ 		avgThroughput += iter->second.rxBytes * 8.0 /
+ 			(iter->second.timeLastRxPacket.GetSeconds() - iter->second.timeFirstTxPacket.GetSeconds()) / 1000000;
+ 	}
+ 
+ 	avgThroughput /= m_flowStats.size();
+ 
+ 	//std::cout << "Avg. Throughput (per flow basis): " << avgThroughput << " Mbps\n";
+ 	std::cout << "Avg. Throughput: " << rxBytes * 8.0 / delaySum / 1000000 << " Mbps\n";
+ 	std::cout << "Average Packet Delay: " << delaySum * 1000.0 / rxPackets << " ms\n";
+ 
+ 	std::cout << "TX Packets: " << txPackets << "\n";
+ 	std::cout << "RX Packets: " << rxPackets << "\n";
+ 	std::cout << "Lost Packets: " << lostPackets << "\n";
+ 	std::cout << "Dropped Packets: " << droppedPackets << "\n";
+ 	std::cout << "Packet Delivery Ratio: " << ((rxPackets * 100) / txPackets) << "%\n";
+ 	std::cout << "Packet Loss Ratio: " << ((lostPackets * 100) / txPackets) << "%\n";
+ }
 
 } // namespace ns3
 

@@ -23,17 +23,17 @@ namespace ns3 {
 
 namespace pld {
 
-NS_LOG_COMPONENT_DEFINE ("PortlandInterface");
+// NS_LOG_COMPONENT_DEFINE ("PortlandInterface");
 
 
 // Registers a PortlandSwitchNetDevice as a switch with the fabric manager.
 void
 FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
 {
-	NS_LOG_UNCOND("Adding switch to fabric manager");
+	// NS_LOG_UNCOND("Adding switch to fabric manager");
   if (m_switches.find (swtch) != m_switches.end ())
     {
-      NS_LOG_UNCOND ("This Fabric Manager has already registered this switch!");
+      // NS_LOG_UNCOND ("This Fabric Manager has already registered this switch!");
     }
   else
     {
@@ -45,9 +45,9 @@ FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
 void
 FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
-	NS_LOG_UNCOND("Inside fabric manager send to switch");
+	// NS_LOG_UNCOND("Inside fabric manager send to switch");
 	if (m_switches.find (swtch) == m_switches.end ()) {
-		NS_LOG_ERROR ("Can't send to this switch, not registered to the Fabric Manager.");
+		// NS_LOG_ERROR ("Can't send to this switch, not registered to the Fabric Manager.");
 		return;
 	}
 
@@ -58,7 +58,7 @@ FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buff
 PACKET_TYPE
 FabricManager::GetPacketType (BufferData buffer)
 {
-	NS_LOG_UNCOND("In getPacketType");
+	// NS_LOG_UNCOND("In getPacketType");
 	return buffer.pkt_type;
 }
 
@@ -77,28 +77,28 @@ BufferData
 FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
   PACKET_TYPE packet_type = GetPacketType(buffer);
-  NS_LOG_UNCOND("FM received a packet from switch");
-  std::cout << "Pakcet type received : " << packet_type << std::endl;
+  // NS_LOG_UNCOND("FM received a packet from switch");
+  //std::cout << "Pakcet type received : " << packet_type << std::endl;
   switch (packet_type)
   {
     case PKT_MAC_REGISTER:
     {
-		NS_LOG_UNCOND("Handling PKT_MAC_REGISTER");
+		// NS_LOG_UNCOND("Handling PKT_MAC_REGISTER");
       pld::PMACRegister* message = (pld::PMACRegister*) (buffer.message);
       return PMACRegisterHandler(message);
     }
 
     case PKT_ARP_REQUEST:
     {
-		NS_LOG_UNCOND("Handling PKT_ARP_REQUEST");
+		// NS_LOG_UNCOND("Handling PKT_ARP_REQUEST");
       pld::ARPRequest* message = (pld::ARPRequest*) (buffer.message);
       return ARPRequestHandler(message, swtch);
     }
 
     default:
     {
-		NS_LOG_UNCOND("Wrong packet type");
-      NS_LOG_UNCOND("Wrong packet type detected : ReceiveFromSwitch Fabric Manager");
+		// NS_LOG_UNCOND("Wrong packet type");
+      // NS_LOG_UNCOND("Wrong packet type detected : ReceiveFromSwitch Fabric Manager");
       BufferData buffer;
       return buffer;
     }
@@ -108,7 +108,7 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData
 void
 FabricManager::addPMACToTable (Ipv4Address ip, Mac48Address pmac)
 {
-	NS_LOG_UNCOND("adding PMAC to table");
+	// NS_LOG_UNCOND("adding PMAC to table");
   IpPMACTable[ip] = pmac;
 }
 
@@ -116,7 +116,7 @@ FabricManager::addPMACToTable (Ipv4Address ip, Mac48Address pmac)
 Ipv4Address
 FabricManager::getIPforPMAC (Mac48Address pmac)
 {
-	NS_LOG_UNCOND("getting IP for PMAC");
+	// NS_LOG_UNCOND("getting IP for PMAC");
   it = IpPMACTable.begin();
   for (it = IpPMACTable.begin(); it != IpPMACTable.end(); ++it)
   {
@@ -132,7 +132,7 @@ FabricManager::getIPforPMAC (Mac48Address pmac)
 bool
 FabricManager::isIPRegistered (Ipv4Address ip)
 {
-	NS_LOG_UNCOND("checking if IP is registered");
+	// NS_LOG_UNCOND("checking if IP is registered");
   it = IpPMACTable.find(ip);
   return (it == IpPMACTable.end() ? false : true);
 }
@@ -140,7 +140,7 @@ FabricManager::isIPRegistered (Ipv4Address ip)
 Mac48Address
 FabricManager::getPMACforIP (Ipv4Address ip)
 {
-	NS_LOG_UNCOND("get PMAC for IP");
+	// NS_LOG_UNCOND("get PMAC for IP");
   if (FabricManager::isIPRegistered(ip))
   {
     return IpPMACTable[ip];
@@ -154,7 +154,7 @@ FabricManager::getPMACforIP (Ipv4Address ip)
 bool
 FabricManager::isPmacRegistered (Mac48Address pmac)
 {
-	NS_LOG_UNCOND("Checking if PMAC is registered");
+	// NS_LOG_UNCOND("Checking if PMAC is registered");
   Ipv4Address ip = getIPforPMAC(pmac);
   return (ip == Ipv4Address("255.255.255.255") ? false : true);
 }
@@ -162,21 +162,21 @@ FabricManager::isPmacRegistered (Mac48Address pmac)
 BufferData
 FabricManager::PMACRegisterHandler(pld::PMACRegister* message)
 {
-	NS_LOG_UNCOND("Inside PMAC register handler");
+	// NS_LOG_UNCOND("Inside PMAC register handler");
   BufferData response_buffer;
   response_buffer.pkt_type = PKT_ARP_RESPONSE;
   response_buffer.message = (ARPResponse*) malloc(sizeof(ARPResponse));
   addPMACToTable(message->hostIP, message->PMACAddress);
-  NS_LOG_UNCOND("Calling free on message");
+  // NS_LOG_UNCOND("Calling free on message");
   free(message);
-  NS_LOG_UNCOND("Returning from PMACRegisterHandler");
+  // NS_LOG_UNCOND("Returning from PMACRegisterHandler");
   return response_buffer;
 }
 
 BufferData
 FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
 {
-	NS_LOG_UNCOND("Inside ARP request handler");
+	// NS_LOG_UNCOND("Inside ARP request handler");
   if (FabricManager::isIPRegistered(message->destIPAddress))
   {
     // IP address present
@@ -203,7 +203,7 @@ FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNet
 BufferData
 FabricManager::ARPResponseHandler(pld::ARPResponse* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
-	NS_LOG_UNCOND("Inside ARP response handler");
+	// NS_LOG_UNCOND("Inside ARP response handler");
   BufferData buffer;
   buffer.pkt_type = PKT_ARP_RESPONSE;
   buffer.message = msg;	
@@ -215,7 +215,7 @@ FabricManager::ARPResponseHandler(pld::ARPResponse* msg, Ptr<PortlandSwitchNetDe
 void
 FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
-	NS_LOG_UNCOND("Inside FloodARPRequest");
+	// NS_LOG_UNCOND("Inside FloodARPRequest");
   BufferData buffer;
   buffer.pkt_type = PKT_ARP_FLOOD;
   buffer.message = msg;
@@ -227,7 +227,7 @@ FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetD
       (*it)->ReceiveBufferFromFabricManager(buffer);
     }
   }
-  NS_LOG_UNCOND("Finished FloodARPRequest");
+  // NS_LOG_UNCOND("Finished FloodARPRequest");
   free(buffer.message);
 }
 

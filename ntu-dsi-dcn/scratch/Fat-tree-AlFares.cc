@@ -80,7 +80,7 @@
 
 using namespace ns3;
 using namespace std;
-NS_LOG_COMPONENT_DEFINE ("Fat-Tree-Architecture");
+// NS_LOG_COMPONENT_DEFINE ("Fat-Tree-Architecture");
 
 // Function to create address string from numbers
 //
@@ -367,17 +367,18 @@ int
 	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 // Run simulation.
 //
-  	NS_LOG_INFO ("Run Simulation.");
+  	// NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
   	Simulator::Run ();
 
   	monitor->CheckForLostPackets ();
   	monitor->SerializeToXmlFile(filename, true, true);
+	monitor->PrintAggregatedStatistics();
 
 	std::cout << "Simulation finished "<<"\n";
 
   	Simulator::Destroy ();
-  	NS_LOG_INFO ("Done.");
+  	// NS_LOG_INFO ("Done.");
 
 	return 0;
 }

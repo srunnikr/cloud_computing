@@ -42,6 +42,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/portland-module.h"
 #include "ns3/log.h"
+#include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
 
@@ -76,6 +77,35 @@ SetTimeout (std::string value)
   return false;
 }
 
+char * toString(int a,int b, int c, int d){
+
+	int first = a;
+	int second = b;
+	int third = c;
+	int fourth = d;
+
+	char *address =  new char[30];
+	char firstOctet[30], secondOctet[30], thirdOctet[30], fourthOctet[30];	
+	//address = firstOctet.secondOctet.thirdOctet.fourthOctet;
+
+	bzero(address,30);
+
+	snprintf(firstOctet,10,"%d",first);
+	strcat(firstOctet,".");
+	snprintf(secondOctet,10,"%d",second);
+	strcat(secondOctet,".");
+	snprintf(thirdOctet,10,"%d",third);
+	strcat(thirdOctet,".");
+	snprintf(fourthOctet,10,"%d",fourth);
+
+	strcat(thirdOctet,fourthOctet);
+	strcat(secondOctet,thirdOctet);
+	strcat(firstOctet,secondOctet);
+	strcat(address,firstOctet);
+
+	return address;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -105,7 +135,7 @@ main (int argc, char *argv[])
 	int num_group = k/2;		// number of group of core switches
         int num_core = (k/2);		// number of core switch in a group
 	int total_host = k*k*k/4;	// number of hosts in the entire network	
-//	char filename [] = "statistics/Fat-tree.xml";// filename for Flow Monitor xml output file
+	char filename [] = "statistics/Portland.xml";// filename for Flow Monitor xml output file
 
 // Define variables for On/Off Application
 // These values will be used to serve the purpose that addresses of server and client are selected randomly
@@ -159,10 +189,18 @@ main (int argc, char *argv[])
 	}
 
   NS_LOG_INFO ("Build Topology");
+  // Initialize parameters for Csma protocol
+//
+	char dataRate [] = "1536Mbps";	// 1Gbps
+	int delay = 0.001;		// 0.001 ms
+
 
   CsmaHelper csma;
-  csma.SetChannelAttribute("DataRate", DataRateValue (5000000));
-  csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (2)));
+  csma.SetChannelAttribute ("DataRate", StringValue (dataRate));
+  csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (delay)));
+  // Inintialize Address Helper
+  //	
+  	Ipv4AddressHelper address;
 
   // Create the csma links, from each terminal to the switch
 
@@ -170,13 +208,13 @@ main (int argc, char *argv[])
   NetDeviceContainer edgedev[num_pod][num_edge][k];
   NetDeviceContainer aggdev[num_pod][num_agg][k];
   NetDeviceContainer coredev[num_group][num_core][k];
-
- 	for (i=0;i<num_pod;i++){
+  	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
 			for (h=0; h< num_host;h++){			
 				NetDeviceContainer link1 = csma.Install (NodeContainer (host[i][j].Get(h), edge[i].Get(j)));
 				hostdev[i][j][h].Add(link1.Get(0));			
-				edgedev[i][j][h].Add(link1.Get(1));						
+				edgedev[i][j][h].Add(link1.Get(1));	
+	
 			}
 		}
 	}
@@ -292,18 +330,111 @@ main (int argc, char *argv[])
   // We've got the "hardware" in place.  Now we need to add IP addresses.
   NS_LOG_INFO ("Assign IP Addresses.");
   Ipv4AddressHelper ipv4;
-  ipv4.SetBase ("10.1.1.0", "255.255.255.0");
 
  	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
 			for (h=0; h< num_host;h++){
+				ipv4.SetBase (toString(10, i, j, 0), "255.255.255.0",toString(0,0,0,h));
 				ipv4.Assign(hostdev[i][j][h]);
 			}
 		}
 	}
 
   // Create an OnOff application to send UDP datagrams from n0 to n1.
-  NS_LOG_INFO ("Create Applications.");
+  std::cout << "creating On/Off traffic"<<"\n";
+  //=========== Initialize settings for On/Off Application ===========//
+//
+// Define variables for On/Off Application
+// These values will be used to serve the purpose that addresses of server and client are selected randomly
+// Note: the format of host's address is 10.pod.switch.(host+2)
+//
+	int podRand = 0;	//	
+	int swRand = 0;		// Random values for servers' address
+	int hostRand = 0;	//
+
+	int rand1 =0;		//
+	int rand2 =0;		// Random values for clients' address	
+	int rand3 =0;		//
+// Initialize parameters for On/Off application
+//
+	int port = 9;
+	int packetSize = 1024;		// 1024 bytes
+	char dataRate_OnOff [] = "96Mbps";
+	char maxBytes [] = "70000";	// 70,000 bytes
+	
+// Generate traffics for the simulation
+//	
+	ApplicationContainer app[total_host];
+	for (i=0;i<total_host;i++){	
+		// Randomly select a server
+		podRand = rand() % num_pod + 0;
+		swRand = rand() % num_edge + 0;
+		hostRand = rand() % num_host + 0;
+		hostRand = hostRand;
+		char *add;
+		add = toString(10, podRand, swRand, hostRand);
+		
+		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(Ipv4Address(add), port))); // ip address of server
+	        oo.SetAttribute("OnTime",RandomVariableValue(ExponentialVariable(1)));  
+	        oo.SetAttribute("OffTime",RandomVariableValue(ExponentialVariable(1))); 
+ 	        oo.SetAttribute("PacketSize",UintegerValue (packetSize));
+ 	       	oo.SetAttribute("DataRate",StringValue (dataRate_OnOff));      
+	        oo.SetAttribute("MaxBytes",StringValue (maxBytes));
+
+// 		app[i] = oo.Install (host[podRand][swRand].Get (hostRand));
+/*		app[i].Start (Seconds (1.0));
+		app[i].Stop (Seconds (100.0));	  */
+		// Randomly select a client
+		rand1 = rand() % num_pod + 0;
+		rand2 = rand() % num_edge + 0;
+		rand3 = rand() % num_host + 0;
+ 			
+		while (rand1== podRand && swRand == rand2 && (rand3) == hostRand){
+			rand1 = rand() % num_pod + 0;
+			rand2 = rand() % num_edge + 0;
+			rand3 = rand() % num_host + 0;
+		} // to make sure that client and server are different
+		
+ 		NodeContainer onoff;
+		onoff.Add(host[rand1][rand2].Get(rand3));
+	     	app[i] = oo.Install (onoff);
+		
+		
+  		PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+		app[i] = sink.Install(host[rand1][rand2].Get (rand3));
+		app[i].Start (Seconds (0.0)); 	
+	}
+	std::cout << "Finished creating On/Off traffic"<<"\n";
+	
+	//=========== Start the simulation ===========//
+//
+	csma.EnablePcapAll ("portland-switch", false);
+	std::cout << "Start Simulation.. "<<"\n";
+	for (i=0;i<total_host;i++){
+		app[i].Start (Seconds (0.0));
+  		app[i].Stop (Seconds (100.0));
+	}
+//  	Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+// Calculate Throughput using Flowmonitor
+//
+  	FlowMonitorHelper flowmon;
+	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
+// Run simulation.
+//
+  	// NS_LOG_INFO ("Run Simulation.");
+  	Simulator::Stop (Seconds(101.0));
+  	Simulator::Run ();
+
+  	monitor->CheckForLostPackets ();
+  	monitor->SerializeToXmlFile(filename, true, true);
+	monitor->PrintAggregatedStatistics();
+
+	std::cout << "Simulation finished "<<"\n";
+	
+  	Simulator::Destroy ();
+  	NS_LOG_INFO ("Done.");
+  /* 
   uint16_t port = 9;   // Discard port (RFC 863)
 
   OnOffHelper onoff ("ns3::UdpSocketFactory",
@@ -340,8 +471,8 @@ main (int argc, char *argv[])
   // Configure tracing of all enqueue, dequeue, and NetDevice receive events.
   // Trace output will be sent to the file "openflow-switch.tr"
   //
-  AsciiTraceHelper ascii;
-  csma.EnableAsciiAll (ascii.CreateFileStream ("portland-switch.tr"));
+  //AsciiTraceHelper ascii;
+  //csma.EnableAsciiAll (ascii.CreateFileStream ("portland-switch.tr"));
 
   //
   // Also configure some tcpdump traces; each interface will be traced.
@@ -350,14 +481,32 @@ main (int argc, char *argv[])
   // and can be read by the "tcpdump -r" command (use "-tt" option to
   // display timestamps correctly)
   //
-  csma.EnablePcapAll ("portland-switch", false);
+ // csma.EnablePcapAll ("portland-switch", false);
 
   //
   // Now, do the actual simulation.
   //
-  NS_LOG_INFO ("Run Simulation.");
-  Simulator::Run ();
-  Simulator::Destroy ();
+// NS_LOG_INFO ("Run Simulation.");
+// Simulator::Run ();
+// Simulator::Destroy ();
+  // Calculate Throughput using Flowmonitor
+//
+  	FlowMonitorHelper flowmon;
+	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
+// Run simulation.
+//
+  	NS_LOG_INFO ("Run Simulation.");
+  	Simulator::Stop (Seconds(101.0));
+  	Simulator::Run ();
+
+  	monitor->CheckForLostPackets ();
+  	monitor->SerializeToXmlFile(filename, true, true);
+	monitor->PrintAggregatedStatistics();
+
+  	Simulator::Destroy ();
+  	NS_LOG_INFO ("Done.");
+ */
+	
   NS_LOG_INFO ("Done.");
   //#else
   //NS_LOG_INFO ("NS-3 OpenFlow is not enabled. Cannot run simulation.");

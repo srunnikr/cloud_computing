@@ -200,7 +200,8 @@ public:
   /// \param enableHistograms if true, include also the histograms in the output
   /// \param enableProbes if true, include also the per-probe/flow pair statistics in the output
   void SerializeToXmlFile (std::string fileName, bool enableHistograms, bool enableProbes);
-
+  /// Prints aggregated statistics
+  void PrintAggregatedStatistics();
 
 protected:
 
