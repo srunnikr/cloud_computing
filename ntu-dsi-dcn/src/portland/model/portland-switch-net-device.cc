@@ -707,8 +707,7 @@ PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_
   {
     // no-op
   }
-
-  free(request_buffer.message);
+  NS_LOG_UNCOND("Finished ReceiveBufferFromFabricManager");
 }
 
 void
@@ -768,6 +767,7 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
       OutputPacket(metadata, i, false);
     }
   }
+  NS_LOG_UNCOND("Finished ARPFloodFromFabricManager");
 }
 
 // Function that gets the output port index based on destination PMAC address

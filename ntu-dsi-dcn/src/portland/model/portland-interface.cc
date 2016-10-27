@@ -227,7 +227,8 @@ FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetD
       (*it)->ReceiveBufferFromFabricManager(buffer);
     }
   }
-  // no free
+  NS_LOG_UNCOND("Finished FloodARPRequest");
+  free(buffer.message);
 }
 
 
