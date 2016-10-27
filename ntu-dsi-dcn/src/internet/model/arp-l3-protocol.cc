@@ -176,12 +176,15 @@ ArpL3Protocol::Receive (Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t pro
    * Note: we do not update the ARP cache when we receive an ARP request
    * from an unknown node. See bug #107
    */
+	NS_LOG_UNCOND("For loop: " << cache->GetInterface ()->GetNAddresses ());
   bool found = false;
   for (uint32_t i = 0; i < cache->GetInterface ()->GetNAddresses (); i++)
     {
+   NS_LOG_UNCOND ("ARP: received" << " Request? " << arp.IsRequest () << " arp_dest " << arp.GetDestinationIpv4Address () << " local_ip " << cache->GetInterface ()->GetAddress (i).GetLocal ());
       if (arp.IsRequest () && arp.GetDestinationIpv4Address () == 
           cache->GetInterface ()->GetAddress (i).GetLocal ())
         {
+			NS_LOG_UNCOND ("ARP: received" << " Request? " << arp.IsRequest ());
           found = true;
           NS_LOG_LOGIC ("node="<<m_node->GetId () <<", got request from " << 
                         arp.GetSourceIpv4Address () << " -- send reply");
@@ -334,7 +337,7 @@ ArpL3Protocol::SendArpReply (Ptr<const ArpCache> cache, Ipv4Address myIp, Ipv4Ad
 {
   NS_LOG_FUNCTION (this << cache << toIp << toMac);
   ArpHeader arp;
-  NS_LOG_LOGIC ("ARP: sending reply from node "<<m_node->GetId ()<<
+  NS_LOG_UNCOND ("ARP: sending reply from node "<<m_node->GetId ()<<
                 "|| src: " << cache->GetDevice ()->GetAddress () <<
                 " / " << myIp <<
                 " || dst: " << toMac << " / " << toIp);

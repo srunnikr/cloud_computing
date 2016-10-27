@@ -481,7 +481,8 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
   NS_LOG_INFO ("--------------------------------------------");
   NS_LOG_DEBUG ("UID is " << packet->GetUid ());
 
-  if (m_device_type == AGGREGATION) {
+  NS_LOG_INFO ("switch-type " << m_device_type << " Pod-num " << (int) m_pod << " Position-num  " << (int) m_position );
+/*  if (m_device_type == AGGREGATION) {
 	NS_LOG_INFO ("On aggrgate switch");
   } else if (m_device_type == CORE) {
 	NS_LOG_INFO ("On Core switch");
@@ -490,7 +491,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
   } else {
 	NS_LOG_INFO ("wrong switch");
   }
-
+*/
   if (!m_promiscRxCallback.IsNull ())
     {
       m_promiscRxCallback (this, packet, protocol, src, dst, packetType);
@@ -525,26 +526,32 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
         }
     }
 
-   NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac << "from_upper? " << from_upper); 
+   NS_LOG_INFO ("Received packet from " << src_mac << " looking for " << dst_mac << " from_upper? " << from_upper); 
 
     if (packetType == PACKET_HOST && dst_mac == m_address)
       {
+	NS_LOG_INFO ("place 1 ");
         m_rxCallback (this, packet, protocol, src);
       }
     else if (packetType == PACKET_BROADCAST || packetType == PACKET_MULTICAST || packetType == PACKET_OTHERHOST)
       {
+		NS_LOG_INFO ("place 2 ");
         if (packetType == PACKET_OTHERHOST && dst_mac == m_address)
           {
+			NS_LOG_INFO ("place 3 ");
             m_rxCallback (this, packet, protocol, src);
           }
         else
           {
+			NS_LOG_INFO ("place 4 ");
             if (packetType == PACKET_OTHERHOST)
               {
+				NS_LOG_INFO ("place 5");
                 m_rxCallback (this, packet, protocol, src);
               }
-            else
-            { 
+            //else
+            //{ 
+				NS_LOG_INFO ("place 6");
               // parse packet
               SwitchPacketMetadata metadata;
               metadata = MetadataFromPacket (packet->Copy (), src, dst, protocol);
@@ -576,6 +583,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                     return;
                   }
                   metadata.packet = packet->Copy ();
+				  NS_LOG_INFO ("src_pmac " << metadata.src_pmac << " dest_pmac " << dst_pmac);
                   OutputPacket(metadata, (uint8_t) out_port, true);
                 }
                 else if (m_device_type == AGGREGATION)
@@ -662,7 +670,7 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
                   return;
                 }
               }
-            } 
+            //} 
           }
       }
 
@@ -678,7 +686,7 @@ PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, uint8_t ou
       pld::Port& p = ports[out_port];
       if (p.netdev != 0)
         {
-          NS_LOG_INFO ("Sending packet " << metadata.packet->GetUid () << " over port " << out_port);
+          NS_LOG_INFO ("Sending packet " << metadata.packet->GetUid () << " over port " << (int) out_port);
           if (p.netdev->SendFrom (metadata.packet->Copy (), metadata.src_pmac, metadata.dst_pmac, metadata.protocol_number))
             {
               p.tx_packets++;
@@ -771,7 +779,7 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
     NS_LOG_UNCOND ("ARP: sending request from node (CORE) "<<m_node->GetId ()<<
                  " || src: " << src_pmac << " / " << src_ip <<
                  " || dst: " << Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast ()*/ << " / " << dst_ip);
-    arp.SetRequest (src_pmac, src_ip, Mac48Address("00:00:00:00:00:00") /*GetBroadcast ()*/, dst_ip);
+    arp.SetRequest ((Address)src_pmac, src_ip, (Address)Mac48Address("00:00:00:00:00:00") /*GetBroadcast ()*/, dst_ip);
     packet->AddHeader (arp);
 
     SwitchPacketMetadata metadata = MetadataFromPacket (packet->Copy (), src_pmac, Mac48Address ("ff:ff:ff:ff:ff:ff") /*GetBroadcast()*/, ArpL3Protocol::PROT_NUMBER);

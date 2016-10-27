@@ -176,13 +176,16 @@ main (int argc, char *argv[])
   PortlandSwitchHelper swtchc;
   
   NetDeviceContainer WAN;
+  NetDeviceContainer low_core;
+  low_core.Add(coreDev[0]);
+  low_core.Add(coreDev[1]);
   
   Ptr<ns3::pld::FabricManager> fabricManager = Create<ns3::pld::FabricManager> ();
   swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 0, 0);
   swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 1, 0);
   swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 0, 0);
   swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 1, 0);
-  swtchc.Install(corenode, coreDev[0], coreDev[1], fabricManager, CORE, 0, 0);
+  swtchc.Install(corenode, low_core, WAN, fabricManager, CORE, 0, 0);
   	
   /*
   if (use_drop)
@@ -233,7 +236,7 @@ main (int argc, char *argv[])
   //
   onoff.SetAttribute ("Remote",
                       AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
-  app = onoff.Install (terminals.Get (0));
+  app = onoff.Install (terminals.Get (1));
   app.Start (Seconds (1.1));
   app.Stop (Seconds (10.0));
 
