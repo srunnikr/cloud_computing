@@ -32,22 +32,22 @@ namespace ns3 {
 
 PortlandSwitchHelper::PortlandSwitchHelper ()
 {
- // NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_FUNCTION_NOARGS ();
   m_deviceFactory.SetTypeId ("ns3::PortlandSwitchNetDevice");
 }
 
 void
 PortlandSwitchHelper::SetDeviceAttribute (std::string n1, const AttributeValue &v1)
 {
- // NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_FUNCTION_NOARGS ();
   m_deviceFactory.Set (n1, v1);
 }
 
 NetDeviceContainer
 PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c, Ptr<ns3::pld::FabricManager> fabric_manager)
 {
- // NS_LOG_FUNCTION_NOARGS ();
- // NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
+ NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
 
   NetDeviceContainer devs;
   Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> ();
@@ -69,8 +69,8 @@ NetDeviceContainer
 PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer lowerDevices, NetDeviceContainer upperDevices, Ptr<ns3::pld::FabricManager> fabric_manager, 
                                 PortlandSwitchType device_type, uint8_t pod, uint8_t position)
 {
- // NS_LOG_FUNCTION_NOARGS ();
- // NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
+ NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
 
   NetDeviceContainer devs;
   Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> ();
@@ -85,13 +85,13 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer lowerDevices, 
 
   for (NetDeviceContainer::Iterator i = lowerDevices.Begin (); i != lowerDevices.End (); ++i)
     {
-     // NS_LOG_INFO ("**** Add SwitchPort " << *i);
+     NS_LOG_INFO ("**** Add SwitchPort " << *i);
       dev->AddSwitchPort (*i, false);
     }
 
   for (NetDeviceContainer::Iterator i = upperDevices.Begin (); i != upperDevices.End (); ++i)
     {
-     // NS_LOG_INFO ("**** Add SwitchPort " << *i);
+     NS_LOG_INFO ("**** Add SwitchPort " << *i);
       dev->AddSwitchPort (*i, true);
     }
  
@@ -101,8 +101,8 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer lowerDevices, 
 NetDeviceContainer
 PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c)
 {
- // NS_LOG_FUNCTION_NOARGS ();
- // NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
+ NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_INFO ("**** Install switch device on node " << node->GetId ());
 
   NetDeviceContainer devs;
   Ptr<PortlandSwitchNetDevice> dev = m_deviceFactory.Create<PortlandSwitchNetDevice> ();
@@ -111,7 +111,7 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c)
 
   for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
     {
-     // NS_LOG_INFO ("**** Add SwitchPort " << *i);
+     NS_LOG_INFO ("**** Add SwitchPort " << *i);
       dev->AddSwitchPort (*i, false);
     }
  
@@ -121,7 +121,7 @@ PortlandSwitchHelper::Install (Ptr<Node> node, NetDeviceContainer c)
 NetDeviceContainer
 PortlandSwitchHelper::Install (std::string nodeName, NetDeviceContainer c)
 {
- // NS_LOG_FUNCTION_NOARGS ();
+ NS_LOG_FUNCTION_NOARGS ();
   Ptr<Node> node = Names::Find<Node> (nodeName);
   return Install (node, c);
 }
