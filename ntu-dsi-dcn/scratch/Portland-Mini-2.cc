@@ -202,10 +202,10 @@ main (int argc, char *argv[])
   low_core.Add(coreDev[1]);
   
   Ptr<ns3::pld::FabricManager> fabricManager = Create<ns3::pld::FabricManager> ();
-  swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 4, 0);
-  swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 5, 0);
-  swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 4, 0);
-  swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 5, 0);
+  swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 0, 0);
+  swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 1, 0);
+  swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 0, 0);
+  swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 1, 0);
   swtchc.Install(corenode, low_core, WAN, fabricManager, CORE, 0, 0);
   	
   /*
@@ -241,7 +241,7 @@ main (int argc, char *argv[])
   oo.SetAttribute("OnTime",RandomVariableValue(ConstantVariable(1)));  
   oo.SetAttribute("OffTime",RandomVariableValue(ConstantVariable(0))); 
   oo.SetAttribute("PacketSize",UintegerValue (packetSize));
-  oo.SetAttribute("DataRate",StringValue ("10Mbps"));      
+  oo.SetAttribute("DataRate",StringValue ("100Mbps"));      
   oo.SetAttribute("MaxBytes",StringValue ("0"));
 
   ApplicationContainer m_sink;

@@ -176,7 +176,8 @@ FabricManager::PMACRegisterHandler(pld::PMACRegister* message)
 BufferData
 FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
 {
-	NS_LOG_UNCOND("Inside ARP request handler");
+  //NS_LOG_UNCOND("Inside ARP request handler");
+  NS_LOG_UNCOND("FM: Event=PMAC Query, src=" << message->srcPMACAddress << "/" << message->srcIPAddress << ", dst=" << "unknown" << "/" << message->destIPAddress);
   if (FabricManager::isIPRegistered(message->destIPAddress))
   {
     // IP address present

@@ -1,12 +1,15 @@
 <?xml version="1.0" ?>
 <FlowMonitor>
   <FlowStats>
-    <Flow flowId="1" timeFirstTxPacket="+1100819199.0ns" timeFirstRxPacket="+0.0ns" timeLastTxPacket="+1199942278.0ns" timeLastRxPacket="+0.0ns" delaySum="+0.0ns" jitterSum="+0.0ns" lastDelay="+0.0ns" txBytes="128344" rxBytes="0" txPackets="122" rxPackets="0" lostPackets="0" timesForwarded="0">
-      <delayHistogram nBins="0" >
+    <Flow flowId="1" timeFirstTxPacket="+1100081919.0ns" timeFirstRxPacket="+1100140383.0ns" timeLastTxPacket="+1199941180.0ns" timeLastRxPacket="+1199992534.0ns" delaySum="+62658990.0ns" jitterSum="+7110.0ns" lastDelay="+51354.0ns" txBytes="1283440" rxBytes="1283440" txPackets="1220" rxPackets="1220" lostPackets="0" timesForwarded="0">
+      <delayHistogram nBins="1" >
+        <bin index="0" start="0" width="0.001" count="1220" />
       </delayHistogram>
-      <jitterHistogram nBins="0" >
+      <jitterHistogram nBins="1" >
+        <bin index="0" start="0" width="0.001" count="1219" />
       </jitterHistogram>
-      <packetSizeHistogram nBins="0" >
+      <packetSizeHistogram nBins="53" >
+        <bin index="52" start="1040" width="20" count="1220" />
       </packetSizeHistogram>
       <flowInterruptionsHistogram nBins="0" >
       </flowInterruptionsHistogram>
@@ -17,10 +20,12 @@
   </Ipv4FlowClassifier>
   <FlowProbes>
     <FlowProbe index="0">
-      <FlowStats  flowId="1" packets="122" bytes="128344" delayFromFirstProbeSum="+0.0ns" >
+      <FlowStats  flowId="1" packets="1220" bytes="1283440" delayFromFirstProbeSum="+0.0ns" >
       </FlowStats>
     </FlowProbe>
     <FlowProbe index="1">
+      <FlowStats  flowId="1" packets="1220" bytes="1283440" delayFromFirstProbeSum="+62658990.0ns" >
+      </FlowStats>
     </FlowProbe>
   </FlowProbes>
 </FlowMonitor>
