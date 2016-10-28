@@ -131,3 +131,6 @@ ENV/
 # NS3 project files
 .hg
 .lock-wafbuild
+*.pcap
+*.tr
+*.swp
