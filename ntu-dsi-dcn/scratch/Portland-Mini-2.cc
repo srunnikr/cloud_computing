@@ -42,6 +42,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/portland-module.h"
 #include "ns3/log.h"
+#include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
 
@@ -101,6 +102,7 @@ main (int argc, char *argv[])
       LogComponentEnable ("PortlandSwitchNetDevice", LOG_LEVEL_INFO);
     }
 
+    // char filename[] = "statistics/Portland-Mini-2.xml";
   //
   // Explicitly create the nodes required by the topology (shown above).
   //
@@ -125,8 +127,8 @@ main (int argc, char *argv[])
   // csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
 
   CsmaHelper csma;
-  csma.SetChannelAttribute("DataRate", DataRateValue (5000000));
-  csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (2)));
+  csma.SetChannelAttribute("DataRate", StringValue("2000Mbps"));
+  csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (0.001)));
 
    int radix = 2;
   // Create the csma links, from each terminal to the switch
@@ -214,36 +216,43 @@ main (int argc, char *argv[])
   // Create an OnOff application to send UDP datagrams from n0 to n1.
   NS_LOG_INFO ("Create Applications.");
   uint16_t port = 9;   // Discard port (RFC 863)
-
-  OnOffHelper onoff ("ns3::UdpSocketFactory",
+  int packetSize = 1024;
+  OnOffHelper oo ("ns3::UdpSocketFactory",
                      Address (InetSocketAddress (Ipv4Address ("10.1.1.2"), port)));
-  onoff.SetAttribute ("OnTime", RandomVariableValue (ConstantVariable (1)));
-  onoff.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
+  oo.SetAttribute("OnTime",RandomVariableValue(ConstantVariable(1)));  
+  oo.SetAttribute("OffTime",RandomVariableValue(ConstantVariable(0))); 
+  oo.SetAttribute("PacketSize",UintegerValue (packetSize));
+  oo.SetAttribute("DataRate",StringValue ("1000Mbps"));      
+  oo.SetAttribute("MaxBytes",StringValue ("0"));
 
-  ApplicationContainer app = onoff.Install (terminals.Get (0));
+  ApplicationContainer m_sink;
+  ApplicationContainer app = oo.Install (terminals.Get (0));
   // Start the application
-  app.Start (Seconds (1.0));
-  app.Stop (Seconds (10.0));
+  app.Start (Seconds (0.01));
+  app.Stop (Seconds (0.15));
 
   // Create an optional packet sink to receive these packets
-  PacketSinkHelper sink ("ns3::UdpSocketFactory",
-                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-  app = sink.Install (terminals.Get(0));
-  app.Start (Seconds (0.0));
+  // PacketSinkHelper sink ("ns3::UdpSocketFactory",
+  //                        Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+  // m_sink = sink.Install (terminals.Get(0));
+  // m_sink.Start (Seconds (0.0));
 
   //
   // Create a similar flow from n3 to n0, starting at time 1.1 seconds
   //
-  onoff.SetAttribute ("Remote",
+  oo.SetAttribute ("Remote",
                       AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
-  app = onoff.Install (terminals.Get (1));
-  app.Start (Seconds (1.1));
-  app.Stop (Seconds (10.0));
+  ApplicationContainer app1 = oo.Install (terminals.Get (1));
+  app1.Start (Seconds (0.31));
+  app1.Stop (Seconds (0.32));
 
-  app = sink.Install (terminals.Get (1));
-  app.Start (Seconds (0.0));
+  // m_sink = sink.Install (terminals.Get (1));
+  // m_sink.Start (Seconds (0.0));
 
   NS_LOG_INFO ("Configure Tracing.");
+
+  FlowMonitorHelper flowmon;
+  Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 
   //
   // Configure tracing of all enqueue, dequeue, and NetDevice receive events.
@@ -265,7 +274,13 @@ main (int argc, char *argv[])
   // Now, do the actual simulation.
   //
   NS_LOG_INFO ("Run Simulation.");
+  Simulator::Stop (Seconds(10.0));
   Simulator::Run ();
+
+  monitor->CheckForLostPackets();
+  monitor->SerializeToXmlFile("statistics/Portland-Mini-2.xml", true, true);
+  monitor->PrintAggregatedStatistics();
+
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");
   //#else
