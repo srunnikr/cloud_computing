@@ -493,6 +493,12 @@ void
  	double delaySum = 0;
  	double avgThroughput = 0;
  
+  if (m_flowStats.size() == 0)
+  {
+    std::cout << "FlowMon: No flows\n";
+    return; 
+  }
+
  	for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator iter = m_flowStats.begin(); iter != m_flowStats.end(); ++iter)
  	{
  		txPackets += iter->second.txPackets;
@@ -507,7 +513,7 @@ void
  
  	avgThroughput /= m_flowStats.size();
  
- 	//std::cout << "Avg. Throughput (per flow basis): " << avgThroughput << " Mbps\n";
+ 	std::cout << "Avg. Throughput (per flow basis): " << avgThroughput << " Mbps\n";
  	std::cout << "Avg. Throughput: " << rxBytes * 8.0 / delaySum / 1000000 << " Mbps\n";
  	std::cout << "Average Packet Delay: " << delaySum * 1000.0 / rxPackets << " ms\n";
  
