@@ -128,38 +128,39 @@ main (int argc, char *argv[])
   csma.SetChannelAttribute("DataRate", DataRateValue (5000000));
   csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (2)));
 
+   int radix = 2;
   // Create the csma links, from each terminal to the switch
   NetDeviceContainer terminalDevices1;
   NetDeviceContainer terminalDevices2;
-  NetDeviceContainer edgeDev1;
-  NetDeviceContainer edgeDev2;
-  NetDeviceContainer aggregationDev1;
-  NetDeviceContainer aggregationDev2;
-  NetDeviceContainer coreDev; 
+  NetDeviceContainer edgeDev1[radix];
+  NetDeviceContainer edgeDev2[radix];
+  NetDeviceContainer aggregationDev1[radix];
+  NetDeviceContainer aggregationDev2[radix];
+  NetDeviceContainer coreDev[radix]; 
   
     NetDeviceContainer link1 = csma.Install (NodeContainer(terminals.Get (0), edgeSwitch1));
     terminalDevices1.Add (link1.Get (0));
-    edgeDev1.Add (link1.Get (1));
+    edgeDev1[0].Add (link1.Get (1));
   
     NetDeviceContainer link2 = csma.Install (NodeContainer(terminals.Get (1), edgeSwitch2));
     terminalDevices1.Add (link2.Get (0));
-    edgeDev2.Add (link2.Get (1));
+    edgeDev2[0].Add (link2.Get (1));
 	
 	NetDeviceContainer link3 = csma.Install (NodeContainer(edgeSwitch1, aggSwitch1));
-    edgeDev1.Add (link3.Get (0));
-    aggregationDev1.Add (link3.Get (1));
+    edgeDev1[1].Add (link3.Get (0));
+    aggregationDev1[0].Add (link3.Get (1));
 
 	NetDeviceContainer link4 = csma.Install (NodeContainer(aggSwitch1, coreSwitch));
-    aggregationDev1.Add (link4.Get (0));
-    coreDev.Add (link4.Get (1));
+    aggregationDev1[1].Add (link4.Get (0));
+    coreDev[0].Add (link4.Get (1));
 	
 	NetDeviceContainer link5 = csma.Install (NodeContainer(coreSwitch, aggSwitch2));
-    coreDev.Add (link5.Get (0));
-    aggregationDev2.Add (link5.Get (1));
+    coreDev[1].Add (link5.Get (0));
+    aggregationDev2[1].Add (link5.Get (1));
 
 	NetDeviceContainer link6 = csma.Install (NodeContainer(aggSwitch2, edgeSwitch2));
-    aggregationDev2.Add (link6.Get (0));
-	edgeDev2.Add (link6.Get (1));
+    aggregationDev2[0].Add (link6.Get (0));
+	edgeDev2[1].Add (link6.Get (1));
   
   // Create the switch netdevice, which will do the packet switching
   Ptr<Node> edgenode1 = edgeSwitch1.Get (0);
@@ -177,11 +178,11 @@ main (int argc, char *argv[])
   NetDeviceContainer WAN;
   
   Ptr<ns3::pld::FabricManager> fabricManager = Create<ns3::pld::FabricManager> ();
-  swtche1.Install(edgenode1, edgeDev1, aggregationDev1, fabricManager, EDGE, 0, 0);
-  swtche2.Install(edgenode2, edgeDev2, aggregationDev2, fabricManager, EDGE, 1, 0);
-  swtcha1.Install(aggnode1, aggregationDev1, coreDev, fabricManager, AGGREGATION, 0, 0);
-  swtcha2.Install(aggnode2, aggregationDev2, coreDev, fabricManager, AGGREGATION, 1, 0);
-  swtchc.Install(corenode, coreDev, WAN, fabricManager, CORE, 0, 0);
+  swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 0, 0);
+  swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 1, 0);
+  swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 0, 0);
+  swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 1, 0);
+  swtchc.Install(corenode, NetDeviceContainer(coreDev[0], coreDev[1]), WAN, fabricManager, CORE, 0, 0);
   	
   /*
   if (use_drop)
@@ -230,11 +231,11 @@ main (int argc, char *argv[])
   //
   // Create a similar flow from n3 to n0, starting at time 1.1 seconds
   //
-  onoff.SetAttribute ("Remote",
-                      AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
-  app = onoff.Install (terminals.Get (0));
-  app.Start (Seconds (1.1));
-  app.Stop (Seconds (10.0));
+  // onoff.SetAttribute ("Remote",
+                      // AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
+  // app = onoff.Install (terminals.Get (0));
+  // app.Start (Seconds (1.1));
+  // app.Stop (Seconds (10.0));
 
   app = sink.Install (terminals.Get (1));
   app.Start (Seconds (0.0));

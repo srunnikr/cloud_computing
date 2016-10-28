@@ -78,7 +78,7 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData
 {
   PACKET_TYPE packet_type = GetPacketType(buffer);
   NS_LOG_UNCOND("FM received a packet from switch");
-  std::cout << "Pakcet type received : " << packet_type << std::endl;
+  //std::cout << "Pakcet type received : " << packet_type << std::endl;
   switch (packet_type)
   {
     case PKT_MAC_REGISTER:
@@ -227,7 +227,8 @@ FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetD
       (*it)->ReceiveBufferFromFabricManager(buffer);
     }
   }
-  // no free
+  NS_LOG_UNCOND("Finished FloodARPRequest");
+  free(buffer.message);
 }
 
 

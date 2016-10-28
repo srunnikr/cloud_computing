@@ -92,6 +92,7 @@ typedef struct SwitchPacketMetadata
   uint16_t protocol_number;     ///< Protocol type of the Packet when the Packet is received
   Mac48Address src_amac;        ///< Actual Source MAC Address of the host when the Packet is received
   Mac48Address src_pmac;        ///< Psuedo Source MAC Address of the host
+  Mac48Address src_mac;
   Mac48Address dst_pmac;        ///< Destination MAC Address of the Packet when the Packet is received.
   Ipv4Address src_ip;           ///< Source IPv4 Address of the Packet when the Packet is received
   Ipv4Address dst_ip;           ///< Destination IPv4 Address of the Packet when the Packet is received.
