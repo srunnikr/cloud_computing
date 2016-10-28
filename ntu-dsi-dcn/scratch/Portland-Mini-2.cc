@@ -112,14 +112,23 @@ main (int argc, char *argv[])
 
   NodeContainer edgeSwitch1;
   edgeSwitch1.Create(1);
+  std::cout << "edge1 " << (int)edgeSwitch1.Get(0)->GetId() << "\n";
+  
   NodeContainer edgeSwitch2;
   edgeSwitch2.Create(1);
+  std::cout << "edge2 " << (int)edgeSwitch2.Get(0)->GetId() << "\n";
+  
   NodeContainer aggSwitch1;
   aggSwitch1.Create(1);
+  std::cout << "agg1 " << (int)aggSwitch1.Get(0)->GetId() << "\n";
+  
   NodeContainer aggSwitch2;
   aggSwitch2.Create(1);
+  std::cout << "agg2 " << (int)aggSwitch2.Get(0)->GetId() << "\n";
+  
   NodeContainer coreSwitch;
   coreSwitch.Create(1);
+  std::cout << "core " << (int)coreSwitch.Get(0)->GetId() << "\n";
   
   NS_LOG_INFO ("Build Topology");
   // CsmaHelper csma;
@@ -127,7 +136,7 @@ main (int argc, char *argv[])
   // csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
 
   CsmaHelper csma;
-  csma.SetChannelAttribute("DataRate", StringValue("2000Mbps"));
+  csma.SetChannelAttribute("DataRate", StringValue("1000Mbps"));
   csma.SetChannelAttribute("Delay", TimeValue (MilliSeconds (0.001)));
 
    int radix = 2;
@@ -143,27 +152,37 @@ main (int argc, char *argv[])
     NetDeviceContainer link1 = csma.Install (NodeContainer(terminals.Get (0), edgeSwitch1));
     terminalDevices1.Add (link1.Get (0));
     edgeDev1[0].Add (link1.Get (1));
-  
-    NetDeviceContainer link2 = csma.Install (NodeContainer(terminals.Get (1), edgeSwitch2));
-    terminalDevices1.Add (link2.Get (0));
-    edgeDev2[0].Add (link2.Get (1));
-	
-	NetDeviceContainer link3 = csma.Install (NodeContainer(edgeSwitch1, aggSwitch1));
+    
+    NetDeviceContainer link3 = csma.Install (NodeContainer(edgeSwitch1, aggSwitch1));
     edgeDev1[1].Add (link3.Get (0));
     aggregationDev1[0].Add (link3.Get (1));
 
-	NetDeviceContainer link4 = csma.Install (NodeContainer(aggSwitch1, coreSwitch));
+    NetDeviceContainer link4 = csma.Install (NodeContainer(aggSwitch1, coreSwitch));
     aggregationDev1[1].Add (link4.Get (0));
     coreDev[0].Add (link4.Get (1));
-	
-	NetDeviceContainer link5 = csma.Install (NodeContainer(coreSwitch, aggSwitch2));
-    coreDev[1].Add (link5.Get (0));
-    aggregationDev2[1].Add (link5.Get (1));
 
-	NetDeviceContainer link6 = csma.Install (NodeContainer(aggSwitch2, edgeSwitch2));
-    aggregationDev2[0].Add (link6.Get (0));
-	edgeDev2[1].Add (link6.Get (1));
-  
+	NetDeviceContainer link2 = csma.Install (NodeContainer(terminals.Get (1), edgeSwitch2));
+    terminalDevices1.Add (link2.Get (0));
+    edgeDev2[0].Add (link2.Get (1));
+	
+	NetDeviceContainer link6 = csma.Install (NodeContainer(edgeSwitch2, aggSwitch2));
+    edgeDev2[1].Add (link6.Get (0));
+	aggregationDev2[0].Add (link6.Get (1));
+   
+    NetDeviceContainer link5 = csma.Install (NodeContainer(aggSwitch2, coreSwitch));
+    aggregationDev2[1].Add (link5.Get (0));
+	coreDev[1].Add (link5.Get (1));
+
+	std::cout << "edgedev1[0] " << (int) edgeDev1[0].Get(0)->GetIfIndex() << "\n";
+	std::cout << "edgedev1[1] " << (int) edgeDev1[1].Get(0)->GetIfIndex() << "\n";
+	std::cout << "edgedev2[0] " << (int) edgeDev2[0].Get(0)->GetIfIndex() << "\n";
+	std::cout << "edgedev2[1] " << (int) edgeDev2[1].Get(0)->GetIfIndex() << "\n";
+	
+	std::cout << "aggdev1[0] " << (int) aggregationDev1[0].Get(0)->GetIfIndex() << "\n";
+	std::cout << "aggdev1[1] " << (int) aggregationDev1[1].Get(0)->GetIfIndex() << "\n";
+	std::cout << "aggdev2[0] " << (int) aggregationDev2[0].Get(0)->GetIfIndex() << "\n";
+	std::cout << "aggdev2[1] " << (int) aggregationDev2[1].Get(0)->GetIfIndex() << "\n";
+	
   // Create the switch netdevice, which will do the packet switching
   Ptr<Node> edgenode1 = edgeSwitch1.Get (0);
   Ptr<Node> edgenode2 = edgeSwitch2.Get (0);
@@ -183,10 +202,10 @@ main (int argc, char *argv[])
   low_core.Add(coreDev[1]);
   
   Ptr<ns3::pld::FabricManager> fabricManager = Create<ns3::pld::FabricManager> ();
-  swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 0, 0);
-  swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 1, 0);
-  swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 0, 0);
-  swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 1, 0);
+  swtche1.Install(edgenode1, edgeDev1[0], edgeDev1[1], fabricManager, EDGE, 4, 0);
+  swtche2.Install(edgenode2, edgeDev2[0], edgeDev2[1], fabricManager, EDGE, 5, 0);
+  swtcha1.Install(aggnode1, aggregationDev1[0], aggregationDev1[1], fabricManager, AGGREGATION, 4, 0);
+  swtcha2.Install(aggnode2, aggregationDev2[0], aggregationDev2[1], fabricManager, AGGREGATION, 5, 0);
   swtchc.Install(corenode, low_core, WAN, fabricManager, CORE, 0, 0);
   	
   /*
@@ -222,14 +241,14 @@ main (int argc, char *argv[])
   oo.SetAttribute("OnTime",RandomVariableValue(ConstantVariable(1)));  
   oo.SetAttribute("OffTime",RandomVariableValue(ConstantVariable(0))); 
   oo.SetAttribute("PacketSize",UintegerValue (packetSize));
-  oo.SetAttribute("DataRate",StringValue ("1000Mbps"));      
+  oo.SetAttribute("DataRate",StringValue ("10Mbps"));      
   oo.SetAttribute("MaxBytes",StringValue ("0"));
 
   ApplicationContainer m_sink;
   ApplicationContainer app = oo.Install (terminals.Get (0));
   // Start the application
-  app.Start (Seconds (0.01));
-  app.Stop (Seconds (0.15));
+  app.Start (Seconds (1.1));
+  app.Stop (Seconds (1.2));
 
   // Create an optional packet sink to receive these packets
   // PacketSinkHelper sink ("ns3::UdpSocketFactory",
@@ -240,12 +259,12 @@ main (int argc, char *argv[])
   //
   // Create a similar flow from n3 to n0, starting at time 1.1 seconds
   //
-  oo.SetAttribute ("Remote",
-                      AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
-  ApplicationContainer app1 = oo.Install (terminals.Get (1));
-  app1.Start (Seconds (0.31));
-  app1.Stop (Seconds (0.32));
-
+  // oo.SetAttribute ("Remote",
+  //                     AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.1"), port)));
+  // ApplicationContainer app1 = oo.Install (terminals.Get (1));
+  // app1.Start (Seconds (1.1));
+  // app1.Stop (Seconds (1.2));
+  
   // m_sink = sink.Install (terminals.Get (1));
   // m_sink.Start (Seconds (0.0));
 
@@ -259,7 +278,7 @@ main (int argc, char *argv[])
   // Trace output will be sent to the file "openflow-switch.tr"
   //
   AsciiTraceHelper ascii;
-  csma.EnableAsciiAll (ascii.CreateFileStream ("portland-switch.tr"));
+  csma.EnableAsciiAll (ascii.CreateFileStream ("traces/portland-switch.tr"));
 
   //
   // Also configure some tcpdump traces; each interface will be traced.
@@ -268,7 +287,7 @@ main (int argc, char *argv[])
   // and can be read by the "tcpdump -r" command (use "-tt" option to
   // display timestamps correctly)
   //
-  csma.EnablePcapAll ("portland-switch", false);
+  csma.EnablePcapAll ("traces/portland-switch", false);
 
   //
   // Now, do the actual simulation.
