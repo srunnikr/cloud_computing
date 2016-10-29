@@ -43,6 +43,7 @@
 #include "ns3/portland-module.h"
 #include "ns3/log.h"
 #include "ns3/flow-monitor-module.h"
+#include "ns3/netanim-module.h"
 
 using namespace ns3;
 
@@ -106,6 +107,12 @@ char * toString(int a,int b, int c, int d){
 	return address;
 }
 
+std::string getHostName(int i, int j)
+{
+	std::stringstream ss;
+	ss << i << "-" << j;
+	return ss.str();
+}
 int
 main (int argc, char *argv[])
 {
@@ -124,7 +131,6 @@ main (int argc, char *argv[])
 
   cmd.Parse (argc, argv);
 
-
 //=========== Define parameters based on value of k ===========//
 //
 	int k	= 4;
@@ -132,8 +138,8 @@ main (int argc, char *argv[])
 	int num_host = (k/2);		// number of hosts under a switch
 	int num_edge = (k/2);		// number of edge switch in a pod
 	int num_agg = (k/2);		// number of aggregation switch in a pod
-	int num_group = k/2;		// number of group of core switches
-        int num_core = (k/2);		// number of core switch in a group
+	int num_group = (k/2);		// number of group of core switches
+    int num_core = (k/2);		// number of core switch in a group
 	int total_host = k*k*k/4;	// number of hosts in the entire network	
 	char filename [] = "statistics/Portland.xml";// filename for Flow Monitor xml output file
 
@@ -208,6 +214,7 @@ main (int argc, char *argv[])
   NetDeviceContainer edgedev[num_pod][num_edge][k];
   NetDeviceContainer aggdev[num_pod][num_agg][k];
   NetDeviceContainer coredev[num_group][num_core][k];
+  	
   	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
 			for (h=0; h< num_host;h++){			
@@ -333,8 +340,9 @@ main (int argc, char *argv[])
 
  	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
+			ipv4.SetBase (toString(10, i, j, 0), "255.255.255.0");
+			csma.EnablePcap(getHostName(i, j), host[i][j]);
 			for (h=0; h< num_host;h++){
-				ipv4.SetBase (toString(10, i, j, 0), "255.255.255.0",toString(0,0,0,h));
 				ipv4.Assign(hostdev[i][j][h]);
 			}
 		}
@@ -370,11 +378,15 @@ main (int argc, char *argv[])
 		podRand = rand() % num_pod + 0;
 		swRand = rand() % num_edge + 0;
 		hostRand = rand() % num_host + 0;
-		hostRand = hostRand;
+	
 		char *add;
 		add = toString(10, podRand, swRand, hostRand);
 		
-		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(Ipv4Address(add), port))); // ip address of server
+		//int deviceRand = rand() % total_host + 1;
+		//add = toString(10, 1, 1, deviceRand);
+
+		Ipv4Address dstAddr = host[podRand][swRand].Get(hostRand)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
+		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(dstAddr, port))); // ip address of server
 	        oo.SetAttribute("OnTime",RandomVariableValue(ExponentialVariable(1)));  
 	        oo.SetAttribute("OffTime",RandomVariableValue(ExponentialVariable(1))); 
  	        oo.SetAttribute("PacketSize",UintegerValue (packetSize));
@@ -404,12 +416,17 @@ main (int argc, char *argv[])
                          Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
 		app[i] = sink.Install(host[rand1][rand2].Get (rand3));
 		app[i].Start (Seconds (0.0)); 	
+
+		std::cout << "From: " 
+		<< host[rand1][rand2].Get(rand3)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+		<< " To: " << add << "\n";
 	}
 	std::cout << "Finished creating On/Off traffic"<<"\n";
 	
 	//=========== Start the simulation ===========//
 //
-	csma.EnablePcapAll ("portland-switch", false);
+	//csma.EnablePcapAll ("portland-switch", false);
+
 	std::cout << "Start Simulation.. "<<"\n";
 	for (i=0;i<total_host;i++){
 		app[i].Start (Seconds (0.0));
@@ -424,6 +441,7 @@ main (int argc, char *argv[])
 //
   	// NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
+  	AnimationInterface anim ("animation.xml");
   	Simulator::Run ();
 
   	monitor->CheckForLostPackets ();
