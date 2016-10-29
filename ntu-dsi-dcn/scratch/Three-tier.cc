@@ -91,7 +91,7 @@ int
 {
 //=========== Define parameters based on value of k ===========//
 //
-	int k = 4;			// number of ports per switch
+	int k = 24;			// number of ports per switch
 	int num_pod = k;		// number of pod
 	int num_host = (k/2);		// number of hosts under a switch
 	int num_edge = (k/2);		// number of edge switch in a pod
