@@ -15,8 +15,8 @@
  *
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
-#ifndef PORTLAND_INTERFACE_H
-#define PORTLAND_INTERFACE_H 1
+#ifndef PORTLAND_FABRIC_MANAGER_H
+#define PORTLAND_FABRIC_MANAGER_H 1
 
 #include <assert.h>
 #include <errno.h>
@@ -35,8 +35,8 @@
 #include <map>
 #include <limits>
 
+#include "portland.h"
 #include "portland-switch-net-device.h"
-#include "portlandProtocol.h"
 
 namespace ns3 {
 
@@ -46,7 +46,7 @@ namespace pld {
 
 // Message information for fabric manager
 typedef struct BufferData {
-    PACKET_TYPE pkt_type; // PACKET_TYPE enum defined in portlandProtocol.h
+    PACKET_TYPE pkt_type; // PACKET_TYPE enum defined in portland.h
     void* message; // Need to cast the message based on the packet type
 } BufferData;
 
@@ -132,7 +132,7 @@ protected:
   /**
    * \internal
    *
-   * However the controller is implemented, this method is to
+   * However the faric manager is implemented, this method is to
    * be used to pass a message on to a switch.
    */
    virtual void SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer);
@@ -145,6 +145,9 @@ protected:
    */
     PACKET_TYPE GetPacketType (BufferData buffer);
 
+    /*
+     * Set of all switches registered with this Fabric Manager instance.
+     */
     typedef std::set<Ptr<PortlandSwitchNetDevice> > Switches_t;
     Switches_t m_switches;  ///< The collection of switches registered to this controller.
 };
@@ -153,4 +156,4 @@ protected:
 
 }
 
-#endif /* PORTLAND_INTERFACE_H */
+#endif /* PORTLAND_FABRIC_MANAGER_H */

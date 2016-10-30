@@ -16,11 +16,6 @@
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
 
-/**
- * \defgroup openflow OpenFlow Switch Device
- * This section documents the API of the ns-3 OpenFlow module. For a generic functional description, please refer to the ns-3 manual.
- */
-
 #ifndef PORTLAND_SWITCH_NET_DEVICE_H
 #define PORTLAND_SWITCH_NET_DEVICE_H 1
 
@@ -47,8 +42,8 @@
 #include <map>
 #include <set>
 
-#include "portland-interface.h"
-#include "portlandProtocol.h"
+#include "portland.h"
+#include "portland-fabric-manager.h"
 
 namespace ns3 {
 

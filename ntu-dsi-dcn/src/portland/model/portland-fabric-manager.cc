@@ -13,20 +13,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
+ * Authors: Dhruv Sharma  <dhsharma@cs.ucsd.edu>,
+ *          Sreejith Unnikrishnan <srunnikr@eng.ucsd.edu>,
+ *          Khalid Alqinyah <kalqinya@eng.ucsd.edu>
  */
-//#ifdef NS3_PORTLAND
 
-#include "portland-interface.h"
+#include "portland-fabric-manager.h"
 
 namespace ns3 {
 
 namespace pld {
 
-NS_LOG_COMPONENT_DEFINE ("PortlandInterface");
+NS_LOG_COMPONENT_DEFINE ("PortlandFabricManager");
 
 
-// Registers a PortlandSwitchNetDevice as a switch with the fabric manager.
+/*
+ * Registers a PortlandSwitchNetDevice as a switch with the fabric manager.
+ */
 void
 FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
 {
@@ -41,7 +44,10 @@ FabricManager::AddSwitch (Ptr<PortlandSwitchNetDevice> swtch)
     }
 }
 
-// Function to send a message/action to the switch (Eg: flood ARP-Req sent to core switch)
+
+/* 
+ * Function to send a message/action to the switch (No longer in use)
+ */
 void
 FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
@@ -54,7 +60,10 @@ FabricManager::SendToSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buff
 	//swtch->ForwardControlInput(buffer);
 }
 
-// Function to extract Packet type/action from the message received from switch
+
+/*
+ * Function to extract Packet type/action from the message received from switch
+ */
 PACKET_TYPE
 FabricManager::GetPacketType (BufferData buffer)
 {
@@ -62,7 +71,10 @@ FabricManager::GetPacketType (BufferData buffer)
 	return buffer.pkt_type;
 }
 
-// generic function (no change required)
+
+/*
+ *  Function to return Fabric Manager TypeId used by NS3 Object Factory.
+ */
 TypeId
 FabricManager::GetTypeId (void)
 {
@@ -73,12 +85,15 @@ FabricManager::GetTypeId (void)
   return tid;
 }
 
+
+/*
+ * Callback from switch with a request buffer
+ */
 BufferData
 FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData buffer)
 {
   PACKET_TYPE packet_type = GetPacketType(buffer);
   NS_LOG_UNCOND("FM received a packet from switch");
-  //std::cout << "Pakcet type received : " << packet_type << std::endl;
   switch (packet_type)
   {
     case PKT_MAC_REGISTER:
@@ -105,6 +120,10 @@ FabricManager::ReceiveFromSwitch (Ptr<PortlandSwitchNetDevice> swtch, BufferData
   }
 }
 
+
+/*
+ * Function to add IP Address <-> PMAC mapping
+ */
 void
 FabricManager::addPMACToTable (Ipv4Address ip, Mac48Address pmac)
 {
@@ -113,6 +132,9 @@ FabricManager::addPMACToTable (Ipv4Address ip, Mac48Address pmac)
 }
 
 
+/*
+ * Function to return IP Address for the given PMAC
+ */
 Ipv4Address
 FabricManager::getIPforPMAC (Mac48Address pmac)
 {
@@ -129,6 +151,10 @@ FabricManager::getIPforPMAC (Mac48Address pmac)
   return Ipv4Address("255.255.255.255");
 }
 
+
+/*
+ * Function to check if there is an existing mapping for a given IP Address
+ */
 bool
 FabricManager::isIPRegistered (Ipv4Address ip)
 {
@@ -137,6 +163,10 @@ FabricManager::isIPRegistered (Ipv4Address ip)
   return (it == IpPMACTable.end() ? false : true);
 }
 
+
+/*
+ * Function to get PMAC for a given IP Address
+ */
 Mac48Address
 FabricManager::getPMACforIP (Ipv4Address ip)
 {
@@ -147,10 +177,15 @@ FabricManager::getPMACforIP (Ipv4Address ip)
   }
   else
   {
+    // indicates a broadcast/flood from CORE switches is needed
     return Mac48Address("ff:ff:ff:ff:ff:ff");
   }
 }
 
+
+/*
+ * Function to check if there is an existing mapping for the given PMAC
+ */
 bool
 FabricManager::isPmacRegistered (Mac48Address pmac)
 {
@@ -159,6 +194,10 @@ FabricManager::isPmacRegistered (Mac48Address pmac)
   return (ip == Ipv4Address("255.255.255.255") ? false : true);
 }
 
+
+/*
+ * Function to handle a new IPAddress <-> PMAC mapping registration
+ */
 BufferData
 FabricManager::PMACRegisterHandler(pld::PMACRegister* message)
 {
@@ -173,6 +212,10 @@ FabricManager::PMACRegisterHandler(pld::PMACRegister* message)
   return response_buffer;
 }
 
+
+/*
+ * Function to handle a query for PMAC in associated ARP request received on the switch.
+ */
 BufferData
 FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNetDevice> swtch)
 {
@@ -180,7 +223,7 @@ FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNet
   NS_LOG_UNCOND("FM: Event=PMAC Query, src=" << message->srcPMACAddress << "/" << message->srcIPAddress << ", dst=" << "unknown" << "/" << message->destIPAddress);
   if (FabricManager::isIPRegistered(message->destIPAddress))
   {
-    // IP address present
+    // IP address mapping present
     ARPResponse* msg = (pld::ARPResponse*) malloc (sizeof(ARPResponse));
     msg->srcIPAddress = message->srcIPAddress;
     msg->srcPMACAddress = message->srcPMACAddress;
@@ -201,6 +244,10 @@ FabricManager::ARPRequestHandler(pld::ARPRequest* message, Ptr<PortlandSwitchNet
   free(message);
 }
 
+
+/*
+ * Function to create a response to query for PMAC in associated ARP request received on the switch.
+ */
 BufferData
 FabricManager::ARPResponseHandler(pld::ARPResponse* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
@@ -210,9 +257,13 @@ FabricManager::ARPResponseHandler(pld::ARPResponse* msg, Ptr<PortlandSwitchNetDe
   buffer.message = msg;	
 
   return buffer;
-  //SendToSwitch(swtch, buffer);
 }
 
+
+/*
+ * Function to handle the case of no existing IP Address <-> PMAC mapping
+ * by instructing the CORE switches to broadcast ARP Requests for given IP Address
+ */
 void
 FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetDevice> swtch)
 {
@@ -236,5 +287,3 @@ FabricManager::FloodARPRequest(pld::ARPFloodRequest* msg, Ptr<PortlandSwitchNetD
 } // end pld namespace
 
 } // end ns3 namespace
-
-//#endif // NS3_PORTLAND

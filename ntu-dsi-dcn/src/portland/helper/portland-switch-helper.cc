@@ -22,7 +22,7 @@
 #include "portland-switch-helper.h"
 #include "ns3/log.h"
 #include "ns3/portland-switch-net-device.h"
-#include "ns3/portland-interface.h"
+#include "ns3/portland-fabric-manager.h"
 #include "ns3/node.h"
 #include "ns3/names.h"
 
