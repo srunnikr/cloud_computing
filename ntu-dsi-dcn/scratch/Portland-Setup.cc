@@ -318,20 +318,6 @@ main (int argc, char *argv[])
 			coresw[i][j].Install(corenode[i][j], low_core, WAN, fabricManager, CORE, 0, 0);
 		}
 	}	
-  	
-  /*
-  if (use_drop)
-    {
-      Ptr<ns3::ofi::DropController> controller = CreateObject<ns3::ofi::DropController> ();
-      swtch.Install (switchNode, switchDevices, controller);
-    }
-  else
-    {
-      Ptr<ns3::ofi::LearningController> controller = CreateObject<ns3::ofi::LearningController> ();
-      if (!timeout.IsZero ()) controller->SetAttribute ("ExpirationTime", TimeValue (timeout));
-      swtch.Install (switchNode, switchDevices, controller);
-    }
-  */
 
   // Add internet stack to the terminals
   InternetStackHelper internet;
@@ -362,11 +348,6 @@ main (int argc, char *argv[])
 //
 // Define variables for On/Off Application
 // These values will be used to serve the purpose that addresses of server and client are selected randomly
-// Note: the format of host's address is 10.pod.switch.(host+2)
-//
-	int podRand = 0;	//	
-	int swRand = 0;		// Random values for servers' address
-	int hostRand = 0;	//
 
 	int rand1 =0;		//
 	int rand2 =0;		// Random values for clients' address	
@@ -385,28 +366,18 @@ main (int argc, char *argv[])
 	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
 			for (h=0; h<num_host; h++){
-	//for (i=0;i<total_host;i++){	
 		// Randomly select a server
 
 		rand1 = rand() % num_pod + 0;
 		rand2 = rand() % num_edge + 0;
 		rand3 = rand() % num_host + 0;
  			
-		while (rand1== podRand && swRand == rand2 && (rand3) == hostRand){
+		while (rand1 == i  && rand2 == j && rand3 == k){
 			rand1 = rand() % num_pod + 0;
 			rand2 = rand() % num_edge + 0;
 			rand3 = rand() % num_host + 0;
 		} // to make sure that client and server are different
 		
-		// podRand = rand() % num_pod + 0;
-		// swRand = rand() % num_edge + 0;
-		// hostRand = rand() % num_host + 0;
-	
-		// char *add;
-		// add = toString(10, podRand, swRand, hostRand);
-		
-		//int deviceRand = rand() % total_host + 1;
-		//add = toString(10, 1, 1, deviceRand);
 
 		Ipv4Address dstAddr = host[rand1][rand2].Get(rand3)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
 		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(dstAddr, port))); // ip address of server
@@ -416,9 +387,6 @@ main (int argc, char *argv[])
  	       	oo.SetAttribute("DataRate",StringValue (dataRate_OnOff));      
 	        oo.SetAttribute("MaxBytes",StringValue (maxBytes));
 
-// 		app[i] = oo.Install (host[podRand][swRand].Get (hostRand));
-/*		app[i].Start (Seconds (1.0));
-		app[i].Stop (Seconds (100.0));	  */
 		
  		NodeContainer onoff;
 		onoff.Add(host[i][j].Get(h));
@@ -455,7 +423,7 @@ main (int argc, char *argv[])
 	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 // Run simulation.
 //
-  	// NS_LOG_INFO ("Run Simulation.");
+  	NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
   	Simulator::Run ();
 
@@ -467,81 +435,4 @@ main (int argc, char *argv[])
 	
   	Simulator::Destroy ();
   	NS_LOG_INFO ("Done.");
-  /* 
-  uint16_t port = 9;   // Discard port (RFC 863)
-
-  OnOffHelper onoff ("ns3::UdpSocketFactory",
-                     Address (InetSocketAddress (Ipv4Address ("10.1.1.5"), port)));
-  onoff.SetAttribute ("OnTime", RandomVariableValue (ConstantVariable (1)));
-  onoff.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0)));
-
-  ApplicationContainer app = onoff.Install (host[0][0].Get (0));
-  // Start the application
-  app.Start (Seconds (1.0));
-  app.Stop (Seconds (10.0));
-
-  // Create an optional packet sink to receive these packets
-  PacketSinkHelper sink ("ns3::UdpSocketFactory",
-                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-  app = sink.Install (host[0][0].Get(0));
-  app.Start (Seconds (0.0));
-
-  //
-  // Create a similar flow from n3 to n0, starting at time 1.1 seconds
-  //
-  onoff.SetAttribute ("Remote",
-                      AddressValue (InetSocketAddress (Ipv4Address ("10.1.1.11"), port)));
-  app = onoff.Install (host[1][1].Get (0));
-  app.Start (Seconds (1.1));
-  app.Stop (Seconds (10.0));
-
-  app = sink.Install (host[1][1].Get (0));
-  app.Start (Seconds (0.0));
-
-  NS_LOG_INFO ("Configure Tracing.");
-
-  //
-  // Configure tracing of all enqueue, dequeue, and NetDevice receive events.
-  // Trace output will be sent to the file "openflow-switch.tr"
-  //
-  //AsciiTraceHelper ascii;
-  //csma.EnableAsciiAll (ascii.CreateFileStream ("portland-switch.tr"));
-
-  //
-  // Also configure some tcpdump traces; each interface will be traced.
-  // The output files will be named:
-  //     openflow-switch-<nodeId>-<interfaceId>.pcap
-  // and can be read by the "tcpdump -r" command (use "-tt" option to
-  // display timestamps correctly)
-  //
- // csma.EnablePcapAll ("portland-switch", false);
-
-  //
-  // Now, do the actual simulation.
-  //
-// NS_LOG_INFO ("Run Simulation.");
-// Simulator::Run ();
-// Simulator::Destroy ();
-  // Calculate Throughput using Flowmonitor
-//
-  	FlowMonitorHelper flowmon;
-	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
-// Run simulation.
-//
-  	NS_LOG_INFO ("Run Simulation.");
-  	Simulator::Stop (Seconds(101.0));
-  	Simulator::Run ();
-
-  	monitor->CheckForLostPackets ();
-  	monitor->SerializeToXmlFile(filename, true, true);
-	monitor->PrintAggregatedStatistics();
-
-  	Simulator::Destroy ();
-  	NS_LOG_INFO ("Done.");
- */
-	
-  NS_LOG_INFO ("Done.");
-  //#else
-  //NS_LOG_INFO ("NS-3 OpenFlow is not enabled. Cannot run simulation.");
-  //#endif // NS3_OPENFLOW
 }
