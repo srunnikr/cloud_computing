@@ -14,23 +14,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+// Project Done as part of Cloud Computing Course at UCSD. (Fall 2016, CSE 291-G) 
 // Network topology
-//
-//        n0     n1
-//        |      |
-//       ----------
-//       | Switch |
-//       ----------
-//        |      |
-//        n2     n3
-//
-//
-// - CBR/UDP flows from n0 to n1 and from n3 to n0
-// - DropTail queues
-// - Tracing of queues and packet receptions to file "openflow-switch.tr"
-// - If order of adding nodes and netdevices is kept:
-//      n0 = 00:00:00;00:00:01, n1 = 00:00:00:00:00:03, n3 = 00:00:00:00:00:07
-//	and port number corresponds to node number, so port 0 is connected to n0, for example.
+// Similar to Fat-Tree, with Portland Switches at Edge, Aggregation and Core
+
+// Traffic pattern: Randomly select client and server. Create flows equal to number of hosts. 
+//		Use On/Off Traffic for simulation.
+
+// - CBR/UDP flows from host i to host j
+
+// IP address allocation is not location dependent. The IP address is not used here to optimise routing.
+// Instead the PMAC will have location information. This IP address is serially assigned to hosts in 
+// the same subnet 10.1.0.0 
+
+// - Simulation Settings:
+//                - Number of nodes: 16-3456
+//                - Number of pods (k): 4, 8, 16, 24
+//		- Simulation running time: 100 seconds
+//		- Packet size: 1024 bytes
+//		- Data rate for packet sending: 96 Mbps
+//		- Data rate for device channel: 1536 Mbps
+//		- Delay time for device: 0.001 ms
+//		- Communication pairs selection: Random Selection with uniform probability
+//		- Traffic flow pattern: Exponential random traffic
+//		- Routing protocol: Portland
+
 
 #include <iostream>
 #include <fstream>
