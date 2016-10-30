@@ -1,0 +1,20 @@
+Number of BCube level =  3
+Number of switch in each BCube level =  225
+Number of host under each switch =  15
+Total number of host =  3375
+Finished creating On/Off traffic
+Fininshed BCube 0 connection
+Fininshed BCube 1 connection
+Fininshed BCube 2 connection
+------------- 
+Start Simulation.. 
+Avg. Throughput: 51.18419 Mbps
+Average Packet Delay: 0.047932 ms
+TX Packets: 20551953
+RX Packets: 20551953
+Lost Packets: 0
+Dropped Packets: 0
+Packet Delivery Ratio: 100%
+Packet Loss Ratio: 0%
+Simulation finished 
+
