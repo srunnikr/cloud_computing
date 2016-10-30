@@ -14,23 +14,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+// Project Done as part of Cloud Computing Course at UCSD. (Fall 2016, CSE 291-G) 
 // Network topology
-//
-//        n0     n1
-//        |      |
-//       ----------
-//       | Switch |
-//       ----------
-//        |      |
-//        n2     n3
-//
-//
-// - CBR/UDP flows from n0 to n1 and from n3 to n0
-// - DropTail queues
-// - Tracing of queues and packet receptions to file "openflow-switch.tr"
-// - If order of adding nodes and netdevices is kept:
-//      n0 = 00:00:00;00:00:01, n1 = 00:00:00:00:00:03, n3 = 00:00:00:00:00:07
-//	and port number corresponds to node number, so port 0 is connected to n0, for example.
+// Similar to Fat-Tree, with Portland Switches at Edge, Aggregation and Core
+
+// Traffic pattern: Randomly select client and server. Create flows equal to number of hosts. 
+//		Use On/Off Traffic for simulation.
+
+// - CBR/UDP flows from host i to host j
+
+// IP address allocation is not location dependent. The IP address is not used here to optimise routing.
+// Instead the PMAC will have location information. This IP address is serially assigned to hosts in 
+// the same subnet 10.1.0.0 
+
+// - Simulation Settings:
+//                - Number of nodes: 16-3456
+//                - Number of pods (k): 4, 8, 16, 24
+//		- Simulation running time: 100 seconds
+//		- Packet size: 1024 bytes
+//		- Data rate for packet sending: 96 Mbps
+//		- Data rate for device channel: 1536 Mbps
+//		- Delay time for device: 0.001 ms
+//		- Communication pairs selection: Random Selection with uniform probability
+//		- Traffic flow pattern: Exponential random traffic
+//		- Routing protocol: Portland
+
 
 #include <iostream>
 #include <fstream>
@@ -43,7 +51,6 @@
 #include "ns3/portland-module.h"
 #include "ns3/log.h"
 #include "ns3/flow-monitor-module.h"
-#include "ns3/netanim-module.h"
 
 using namespace ns3;
 
@@ -337,11 +344,12 @@ main (int argc, char *argv[])
   // We've got the "hardware" in place.  Now we need to add IP addresses.
   NS_LOG_INFO ("Assign IP Addresses.");
   Ipv4AddressHelper ipv4;
+	
+	ipv4.SetBase (toString(10, 1, 0, 0), "255.255.0.0");
 
  	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
-			ipv4.SetBase (toString(10, i, j, 0), "255.255.255.0");
-			csma.EnablePcap(getHostName(i, j), host[i][j]);
+			//csma.EnablePcap(getHostName(i, j), host[i][j]);
 			for (h=0; h< num_host;h++){
 				ipv4.Assign(hostdev[i][j][h]);
 			}
@@ -373,30 +381,13 @@ main (int argc, char *argv[])
 // Generate traffics for the simulation
 //	
 	ApplicationContainer app[total_host];
-	for (i=0;i<total_host;i++){	
+	srand (time(NULL));
+	for (i=0;i<num_pod;i++){
+		for (j=0;j<num_edge; j++){
+			for (h=0; h<num_host; h++){
+	//for (i=0;i<total_host;i++){	
 		// Randomly select a server
-		podRand = rand() % num_pod + 0;
-		swRand = rand() % num_edge + 0;
-		hostRand = rand() % num_host + 0;
-	
-		char *add;
-		add = toString(10, podRand, swRand, hostRand);
-		
-		//int deviceRand = rand() % total_host + 1;
-		//add = toString(10, 1, 1, deviceRand);
 
-		Ipv4Address dstAddr = host[podRand][swRand].Get(hostRand)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
-		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(dstAddr, port))); // ip address of server
-	        oo.SetAttribute("OnTime",RandomVariableValue(ExponentialVariable(1)));  
-	        oo.SetAttribute("OffTime",RandomVariableValue(ExponentialVariable(1))); 
- 	        oo.SetAttribute("PacketSize",UintegerValue (packetSize));
- 	       	oo.SetAttribute("DataRate",StringValue (dataRate_OnOff));      
-	        oo.SetAttribute("MaxBytes",StringValue (maxBytes));
-
-// 		app[i] = oo.Install (host[podRand][swRand].Get (hostRand));
-/*		app[i].Start (Seconds (1.0));
-		app[i].Stop (Seconds (100.0));	  */
-		// Randomly select a client
 		rand1 = rand() % num_pod + 0;
 		rand2 = rand() % num_edge + 0;
 		rand3 = rand() % num_host + 0;
@@ -407,19 +398,44 @@ main (int argc, char *argv[])
 			rand3 = rand() % num_host + 0;
 		} // to make sure that client and server are different
 		
+		// podRand = rand() % num_pod + 0;
+		// swRand = rand() % num_edge + 0;
+		// hostRand = rand() % num_host + 0;
+	
+		// char *add;
+		// add = toString(10, podRand, swRand, hostRand);
+		
+		//int deviceRand = rand() % total_host + 1;
+		//add = toString(10, 1, 1, deviceRand);
+
+		Ipv4Address dstAddr = host[rand1][rand2].Get(rand3)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
+		OnOffHelper oo = OnOffHelper("ns3::UdpSocketFactory",Address(InetSocketAddress(dstAddr, port))); // ip address of server
+	        oo.SetAttribute("OnTime",RandomVariableValue(ExponentialVariable(1)));  
+	        oo.SetAttribute("OffTime",RandomVariableValue(ExponentialVariable(1))); 
+ 	        oo.SetAttribute("PacketSize",UintegerValue (packetSize));
+ 	       	oo.SetAttribute("DataRate",StringValue (dataRate_OnOff));      
+	        oo.SetAttribute("MaxBytes",StringValue (maxBytes));
+
+// 		app[i] = oo.Install (host[podRand][swRand].Get (hostRand));
+/*		app[i].Start (Seconds (1.0));
+		app[i].Stop (Seconds (100.0));	  */
+		
  		NodeContainer onoff;
-		onoff.Add(host[rand1][rand2].Get(rand3));
+		onoff.Add(host[i][j].Get(h));
 	    app[i] = oo.Install (onoff);
 		
 		
   		PacketSinkHelper sink ("ns3::UdpSocketFactory",
                          Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-		app[i] = sink.Install(host[rand1][rand2].Get (rand3));
+		app[i] = sink.Install(host[i][j].Get (h));
 		app[i].Start (Seconds (0.0)); 	
 
 		std::cout << "From: " 
-		<< host[rand1][rand2].Get(rand3)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
-		<< " To: " << add << "\n";
+		<< host[i][j].Get(h)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+		<< " dstaddr: "<< dstAddr << "\n";
+	//}
+		}
+	}
 	}
 	std::cout << "Finished creating On/Off traffic"<<"\n";
 	
@@ -441,7 +457,6 @@ main (int argc, char *argv[])
 //
   	// NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
-  	AnimationInterface anim ("animation.xml");
   	Simulator::Run ();
 
   	monitor->CheckForLostPackets ();
