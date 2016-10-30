@@ -362,11 +362,6 @@ main (int argc, char *argv[])
 //
 // Define variables for On/Off Application
 // These values will be used to serve the purpose that addresses of server and client are selected randomly
-// Note: the format of host's address is 10.pod.switch.(host+2)
-//
-	int podRand = 0;	//	
-	int swRand = 0;		// Random values for servers' address
-	int hostRand = 0;	//
 
 	int rand1 =0;		//
 	int rand2 =0;		// Random values for clients' address	
@@ -385,14 +380,13 @@ main (int argc, char *argv[])
 	for (i=0;i<num_pod;i++){
 		for (j=0;j<num_edge; j++){
 			for (h=0; h<num_host; h++){
-	//for (i=0;i<total_host;i++){	
 		// Randomly select a server
 
 		rand1 = rand() % num_pod + 0;
 		rand2 = rand() % num_edge + 0;
 		rand3 = rand() % num_host + 0;
  			
-		while (rand1== podRand && swRand == j && (rand3) == k){
+		while (rand1 == i  && rand2 == j && rand3 == k){
 			rand1 = rand() % num_pod + 0;
 			rand2 = rand() % num_edge + 0;
 			rand3 = rand() % num_host + 0;
