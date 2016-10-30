@@ -34,25 +34,25 @@ The value of k (radix) can be changed in the source files at scratch/ and then c
 - To simulate the Fat tree architecture,
 
 ```
-./waf --run scratch/Fat-tree-AlFares > throughput_data/Fattree_kvalue
+./waf --run scratch/Fat-tree-AlFares > throughput-data/Fattree_kvalue
 ```
 
 - To simulate the BCube architecture, 
 
 ```
-./waf --run scratch/BCube > throughput_data/BCube_kvalue
+./waf --run scratch/BCube > throughput-data/BCube_kvalue
 ```
 
 - To simulate the Portland architecture, 
 
 ```
-./waf --run scratch/Portland-Setup > throughput_data/Portland_kvalue
+./waf --run scratch/Portland-Setup > throughput-data/Portland_kvalue
 ```
 
 - To simulate the 3-tier architecture, 
 
 ```
-./waf --run scratch/Three-tier > throughput_data/Three-tier_kvalue
+./waf --run scratch/Three-tier > throughput-data/Three-tier_kvalue
 ```
 
 - The performance statistics outputs are generated in the "/statistics" folder in XML format. Statistics output information such as the average throughput, number of packets transmitted and packet delay can be found by opening the XML file in a text editor
