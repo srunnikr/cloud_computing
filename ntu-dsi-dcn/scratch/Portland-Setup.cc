@@ -392,7 +392,7 @@ main (int argc, char *argv[])
 		rand2 = rand() % num_edge + 0;
 		rand3 = rand() % num_host + 0;
  			
-		while (rand1== podRand && swRand == rand2 && (rand3) == hostRand){
+		while (rand1== podRand && swRand == j && (rand3) == k){
 			rand1 = rand() % num_pod + 0;
 			rand2 = rand() % num_edge + 0;
 			rand3 = rand() % num_host + 0;
