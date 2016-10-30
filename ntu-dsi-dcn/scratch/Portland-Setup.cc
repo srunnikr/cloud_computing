@@ -140,7 +140,7 @@ main (int argc, char *argv[])
 
 //=========== Define parameters based on value of k ===========//
 //
-	int k	= 4;
+	int k	= 8;
 	int num_pod = k;		// number of pod
 	int num_host = (k/2);		// number of hosts under a switch
 	int num_edge = (k/2);		// number of edge switch in a pod
