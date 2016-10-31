@@ -8,7 +8,9 @@
 namespace ns3
 {
 
-// Packet types
+/*
+ * Packet types for interaction with Fabric Manager
+ */
 enum PACKET_TYPE {
 	PKT_MAC_REGISTER = 1,
 	PKT_ARP_REQUEST,
@@ -16,6 +18,9 @@ enum PACKET_TYPE {
 	PKT_ARP_FLOOD
 };
 
+/*
+ * Portland switch type based on the topology layer it is present in
+ */ 
 enum PortlandSwitchType {
     EDGE = 1,
     AGGREGATION,

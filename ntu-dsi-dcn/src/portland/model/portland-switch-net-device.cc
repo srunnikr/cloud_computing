@@ -15,7 +15,6 @@
  *
  * Author: Dhruv Sharma  <dhsharma@cs.ucsd.edu>
  */
-//#ifdef NS3_PORTLAND
 
 #include <cstdlib>
 
@@ -29,11 +28,13 @@ NS_LOG_COMPONENT_DEFINE ("PortlandSwitchNetDevice");
 
 NS_OBJECT_ENSURE_REGISTERED (PortlandSwitchNetDevice);
 
+
 const char *
 PortlandSwitchNetDevice::GetManufacturerDescription ()
 {
   return "The UCSD cloud computing team";
 }
+
 
 const char *
 PortlandSwitchNetDevice::GetHardwareDescription ()
@@ -41,11 +42,13 @@ PortlandSwitchNetDevice::GetHardwareDescription ()
   return "N/A";
 }
 
+
 const char *
 PortlandSwitchNetDevice::GetSoftwareDescription ()
 {
   return "Simulated Portland Switch";
 }
+
 
 const char *
 PortlandSwitchNetDevice::GetSerialNumber ()
@@ -53,11 +56,13 @@ PortlandSwitchNetDevice::GetSerialNumber ()
   return "N/A";
 }
 
+
 static uint64_t
 GenerateId ()
 {
   return (uint64_t)(rand() % 100);
 }
+
 
 TypeId
 PortlandSwitchNetDevice::GetTypeId (void)
@@ -75,7 +80,10 @@ PortlandSwitchNetDevice::GetTypeId (void)
   return tid;
 }
 
-// PortlandSwitchNetDevice constructor
+
+/*
+ * Constructor to create a new PortlandSwitchNetDevice object
+ */
 PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   : m_node (0),
     m_ifIndex (0),
@@ -99,12 +107,19 @@ PortlandSwitchNetDevice::PortlandSwitchNetDevice ()
   m_lower_ports.reserve (100);
 }
 
+
+/*
+ * Destructor for PortlandSwitchNetDevice object
+ */
 PortlandSwitchNetDevice::~PortlandSwitchNetDevice ()
 {
   NS_LOG_FUNCTION_NOARGS ();
 }
 
-// PortlandSwitchNetDevice cleanup function
+
+/*
+ *  Function to cleanup PortlandSwitchNetDevice residual state
+ */
 void
 PortlandSwitchNetDevice::DoDispose ()
 {
@@ -130,7 +145,10 @@ PortlandSwitchNetDevice::DoDispose ()
   NetDevice::DoDispose ();
 }
 
-// Add the FabricManager to the PortlandSwitchNetDevice
+
+/*
+ * Function to add the FabricManager instance to the PortlandSwitchNetDevice
+ */
 void
 PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
 {
@@ -144,8 +162,11 @@ PortlandSwitchNetDevice::SetFabricManager (Ptr<pld::FabricManager> fm)
   m_fabricManager->AddSwitch (this);
 }
 
-// Registers other NetDevices/NICs (eg. CsmaNetDevice) on the switch with this  PortlandSwitchNetDevice as switch ports,
-// and register the receive callback function with those devices.
+
+/*
+ * Registers other NetDevices/NICs (eg. CsmaNetDevice) on the switch with this  PortlandSwitchNetDevice as switch ports,
+ * and register the receive callback function with those devices.
+ */
 int
 PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort, bool is_upper)
 {
@@ -183,6 +204,10 @@ PortlandSwitchNetDevice::AddSwitchPort (Ptr<NetDevice> switchPort, bool is_upper
   return 0;
 }
 
+
+/*
+ * Function to set the PortlandSwitchNetDevice's switch type, i.e. Edge, Aggregation, or Core.
+ */
 void
 PortlandSwitchNetDevice::SetDeviceType (const PortlandSwitchType device_type)
 {
@@ -190,6 +215,10 @@ PortlandSwitchNetDevice::SetDeviceType (const PortlandSwitchType device_type)
   m_device_type = device_type;
 }
 
+
+/*
+ * Function to get the PortlandSwitchNetDevice's switch type
+ */
 PortlandSwitchType
 PortlandSwitchNetDevice::GetDeviceType (void) const
 {
@@ -197,6 +226,10 @@ PortlandSwitchNetDevice::GetDeviceType (void) const
   return m_device_type;
 }
 
+
+/*
+ * Returns true if the switch is in the Core layer of topology; false otherwise.
+ */
 bool
 PortlandSwitchNetDevice::IsCore(void)
 {
@@ -209,6 +242,10 @@ PortlandSwitchNetDevice::IsCore(void)
   return false;
 }
 
+
+/*
+ * Updates the Pod number of the switch in the topology.
+ */
 void
 PortlandSwitchNetDevice::SetPod (const uint8_t pod)
 {
@@ -216,6 +253,10 @@ PortlandSwitchNetDevice::SetPod (const uint8_t pod)
   m_pod = pod;
 }
 
+
+/*
+ * Returns the Pod number of the switch in the topology.
+ */
 uint8_t
 PortlandSwitchNetDevice::GetPod (void) const
 {
@@ -223,6 +264,10 @@ PortlandSwitchNetDevice::GetPod (void) const
   return m_pod;
 }
 
+
+/*
+ * Updates the Position number of the switch in the pod.
+ */
 void
 PortlandSwitchNetDevice::SetPosition (const uint8_t position)
 {
@@ -230,6 +275,10 @@ PortlandSwitchNetDevice::SetPosition (const uint8_t position)
   m_position = position;
 }
 
+
+/*
+ * Returns the Position number of the switch in the pod.
+ */
 uint8_t
 PortlandSwitchNetDevice::GetPosition (void) const
 {
@@ -237,12 +286,14 @@ PortlandSwitchNetDevice::GetPosition (void) const
   return m_position;
 }
 
+
 void
 PortlandSwitchNetDevice::SetIfIndex (const uint32_t index)
 {
   NS_LOG_FUNCTION_NOARGS ();
   m_ifIndex = index;
 }
+
 
 uint32_t
 PortlandSwitchNetDevice::GetIfIndex (void) const
@@ -345,7 +396,6 @@ PortlandSwitchNetDevice::IsBridge (void) const
   return true;
 }
 
-// Function to send the packet out through one of the regular switch ports or if undecided, forward to fabric manager
 void
 PortlandSwitchNetDevice::DoOutput (uint32_t packet_uid, int in_port, size_t max_len, int out_port, bool ignore_no_fwd)
 {
@@ -375,12 +425,14 @@ PortlandSwitchNetDevice::GetNode (void) const
   return m_node;
 }
 
+
 void
 PortlandSwitchNetDevice::SetNode (Ptr<Node> node)
 {
   NS_LOG_FUNCTION_NOARGS ();
   m_node = node;
 }
+
 
 bool
 PortlandSwitchNetDevice::NeedsArp (void) const
@@ -389,12 +441,14 @@ PortlandSwitchNetDevice::NeedsArp (void) const
   return true;
 }
 
+
 void
 PortlandSwitchNetDevice::SetReceiveCallback (NetDevice::ReceiveCallback cb)
 {
   NS_LOG_FUNCTION_NOARGS ();
   m_rxCallback = cb;
 }
+
 
 void
 PortlandSwitchNetDevice::SetPromiscReceiveCallback (NetDevice::PromiscReceiveCallback cb)
@@ -403,12 +457,14 @@ PortlandSwitchNetDevice::SetPromiscReceiveCallback (NetDevice::PromiscReceiveCal
   m_promiscRxCallback = cb;
 }
 
+
 bool
 PortlandSwitchNetDevice::SupportsSendFrom () const
 {
   NS_LOG_FUNCTION_NOARGS ();
   return true;
 }
+
 
 Address
 PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
@@ -417,7 +473,11 @@ PortlandSwitchNetDevice::GetMulticast (Ipv6Address addr) const
   return Mac48Address::GetMulticast (addr);
 }
 
-// Function to attract packet fields from the packet received and return a buffer with all necessary fields
+
+/*
+ * Function to attract packet fields from the packet received and return a buffer with all necessary fields including
+ * srcAMAC/PMAC, dstPMAC, srcIP and dstIP.
+ */
 SwitchPacketMetadata
 PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Address src, Address dst, uint16_t protocol)
 {
@@ -472,7 +532,10 @@ PortlandSwitchNetDevice::MetadataFromPacket (Ptr<const Packet> constPacket, Addr
   return metadata;
 }
 
-// Actual callback function called when a packet is received on a switch port (i.e. netdev here)
+
+/*
+ * Actual callback function called when a packet is received on a switch port
+ */
 void
 PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Packet> packet, uint16_t protocol,
                                             const Address& src, const Address& dst, PacketType packetType)
@@ -691,7 +754,10 @@ PortlandSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
 
 }
 
-// Function to forward a given packet to the specified out port.
+
+/*
+ * Function to forward a given packet to the specified out port.
+ */
 void
 PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, uint8_t out_port, bool is_upper)
 {
@@ -720,6 +786,9 @@ PortlandSwitchNetDevice::OutputPacket (SwitchPacketMetadata metadata, uint8_t ou
 }
 
 
+/*
+ * Function to send request buffer to Fabric Manager
+ */
 pld::BufferData
 PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffer)
 {
@@ -732,6 +801,9 @@ PortlandSwitchNetDevice::SendBufferToFabricManager(pld::BufferData request_buffe
   return response_buffer;
 }
 
+/*
+ * Function to receive response buffer from the Fabric Manager
+ */
 void
 PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_buffer)
 {
@@ -747,6 +819,10 @@ PortlandSwitchNetDevice::ReceiveBufferFromFabricManager(pld::BufferData request_
   // NS_LOG_UNCOND("Finished ReceiveBufferFromFabricManager");
 }
 
+
+/*
+ * Updates Fabric Manager with a newly seen srcIP and allocated PMAC.
+ */
 void
 PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address src_pmac)
 {
@@ -763,6 +839,11 @@ PortlandSwitchNetDevice::UpdateFabricManager(Ipv4Address src_ip, Mac48Address sr
   // NS_LOG_UNCOND("EOF UpdateFabricManager");
 }
 
+
+/*
+ * Queries Fabric Manager for PMAC for the corresponding IP Address. It passes the srcPMAC additionally because
+ * Fabric Manager might have to flood ARP Requests to the network via the Core switches
+ */
 Mac48Address
 PortlandSwitchNetDevice::QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
 {
@@ -784,6 +865,10 @@ PortlandSwitchNetDevice::QueryFabricManager(Ipv4Address dst_ip, Ipv4Address src_
   return dst_pmac;
 }
 
+
+/*
+ * Function to flood ARP requests to all lower layer ports of the Core switches.
+ */
 void
 PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
 {
@@ -809,9 +894,12 @@ PortlandSwitchNetDevice::ARPFloodFromFabricManager(Ipv4Address dst_ip, Ipv4Addre
   // NS_LOG_UNCOND("Finished ARPFloodFromFabricManager");
 }
 
-// Function that gets the output port index based on destination PMAC address
-// Each device has k ports; first half are south-bound, next half are north-bound
-// Device type and position are assumed to be known
+
+/*
+ * Function that gets the output port index based on destination PMAC address
+ * Each device has k ports; first half are south-bound, next half are north-bound
+ * Device type and position are assumed to be known
+ */
 int
 PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
 {   
@@ -864,6 +952,11 @@ PortlandSwitchNetDevice::GetOutputPort(Mac48Address dst_pmac)
   return -1;
 }
 
+
+/*
+ * Checks the PMAC table for existing PMAC entry. If not found, creates a new PMAC based on switch's pod and position
+ * and packet in-port.
+ */
 Mac48Address
 PortlandSwitchNetDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t in_port, bool from_upper)
 {
@@ -910,6 +1003,10 @@ PortlandSwitchNetDevice::GetSourcePMAC (SwitchPacketMetadata metadata, uint8_t i
   return src_pmac;
 }
 
+
+/*
+ * Returns the Destination PMAC by either querying the local PMAC table or the global Fabric Manager.
+ */
 Mac48Address
 PortlandSwitchNetDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src_ip, Mac48Address src_pmac)
 {
@@ -929,7 +1026,6 @@ PortlandSwitchNetDevice::GetDestinationPMAC (Ipv4Address dst_ip, Ipv4Address src
 }
 
 
-//dummy impl
 uint32_t
 PortlandSwitchNetDevice::GetNSwitchPorts (void) const
 {
@@ -938,7 +1034,6 @@ PortlandSwitchNetDevice::GetNSwitchPorts (void) const
 }
 
 
-// dummy impl
 pld::Port
 PortlandSwitchNetDevice::GetSwitchPort (uint32_t n) const
 {
@@ -947,7 +1042,6 @@ PortlandSwitchNetDevice::GetSwitchPort (uint32_t n) const
   return port;
 }
 
-// dummy impl
 int
 PortlandSwitchNetDevice::GetSwitchPortIndex (pld::Port p)
 {
@@ -962,6 +1056,9 @@ PortlandSwitchNetDevice::GetSwitchPortIndex (pld::Port p)
   return -1;
 }
 
+/*
+ * Adds an entry of AMAC, IP, in-port <-> PMAC in the PMAC table.
+ */
 void
 PortlandSwitchNetDevice::PMACTable::Add(const Mac48Address& pmac, const Mac48Address& amac, const Ipv4Address ip_address, const uint32_t port)
 {
@@ -973,6 +1070,10 @@ PortlandSwitchNetDevice::PMACTable::Add(const Mac48Address& pmac, const Mac48Add
   mapping.insert(std::make_pair(pmac, entry));
 }
 
+
+/*
+ * Removes PMAC Entry from the table based on the given AMAC
+ */
 void
 PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
 {
@@ -993,6 +1094,10 @@ PortlandSwitchNetDevice::PMACTable::Remove(const Mac48Address& amac)
   }
 }
 
+
+/*
+ * Finds the port of host based on given PMAC
+ */
 int
 PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac) const
 {
@@ -1004,6 +1109,10 @@ PortlandSwitchNetDevice::PMACTable::FindPort(const Mac48Address& pmac) const
   return -1;
 }
 
+
+/*
+ * Finds the port of host based on given PMAC
+ */
 int
 PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) const
 {
@@ -1020,6 +1129,9 @@ PortlandSwitchNetDevice::PMACTable::FindPort(const Ipv4Address& ip_address) cons
   return -1;
 }
 
+/*
+ * Finds an AMAC based on the given PMAC
+ */
 Mac48Address
 PortlandSwitchNetDevice::PMACTable::FindAMAC(const Mac48Address& pmac) const
 {
@@ -1031,6 +1143,10 @@ PortlandSwitchNetDevice::PMACTable::FindAMAC(const Mac48Address& pmac) const
     return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
+
+/*
+ * Finds an AMAC based on the given IP Address.
+ */
 Mac48Address
 PortlandSwitchNetDevice::PMACTable::FindAMAC(const Ipv4Address& ip_address) const
 {
@@ -1047,6 +1163,10 @@ PortlandSwitchNetDevice::PMACTable::FindAMAC(const Ipv4Address& ip_address) cons
   return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
+
+/*
+ * Finds a PMAC based on the given AMAC.
+ */
 Mac48Address
 PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
 {
@@ -1064,6 +1184,9 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Mac48Address& amac) const
 }
 
 
+/*
+ * Finds a PMAC based on the given IP Address.
+ */
 Mac48Address
 PortlandSwitchNetDevice::PMACTable::FindPMAC(const Ipv4Address& ip_address) const
 {
@@ -1080,6 +1203,10 @@ PortlandSwitchNetDevice::PMACTable::FindPMAC(const Ipv4Address& ip_address) cons
   return Mac48Address("ff:ff:ff:ff:ff:ff");
 }
 
+
+/*
+ * Clears all entries in the PMAC table.
+ */
 void
 PortlandSwitchNetDevice::PMACTable::clear(void)
 {
@@ -1087,5 +1214,3 @@ PortlandSwitchNetDevice::PMACTable::clear(void)
 }
 
 } // namespace ns3
-
-//#endif // NS3_PORTLAND
