@@ -80,7 +80,7 @@
 
 using namespace ns3;
 using namespace std;
-NS_LOG_COMPONENT_DEFINE ("Fat-Tree-Architecture");
+// NS_LOG_COMPONENT_DEFINE ("Fat-Tree-Architecture");
 
 // Function to create address string from numbers
 //
@@ -120,7 +120,7 @@ int
 {
 //=========== Define parameters based on value of k ===========//
 //
-	int k = 4;			// number of ports per switch
+	int k = 24;			// number of ports per switch
 	int num_pod = k;		// number of pod
 	int num_host = (k/2);		// number of hosts under a switch
 	int num_edge = (k/2);		// number of edge switch in a pod
@@ -248,7 +248,7 @@ int
 		NodeContainer onoff;
 		onoff.Add(host[rand1][rand2].Get(rand3));
 	     	app[i] = oo.Install (onoff);
-	}
+		}
 	std::cout << "Finished creating On/Off traffic"<<"\n";
 
 // Inintialize Address Helper
@@ -367,17 +367,18 @@ int
 	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 // Run simulation.
 //
-  	NS_LOG_INFO ("Run Simulation.");
+  	// NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
   	Simulator::Run ();
 
   	monitor->CheckForLostPackets ();
   	monitor->SerializeToXmlFile(filename, true, true);
+	monitor->PrintAggregatedStatistics();
 
 	std::cout << "Simulation finished "<<"\n";
 
   	Simulator::Destroy ();
-  	NS_LOG_INFO ("Done.");
+  	// NS_LOG_INFO ("Done.");
 
 	return 0;
 }

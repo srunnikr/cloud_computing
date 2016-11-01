@@ -1,0 +1,148 @@
+Value of k =  8
+Total number of hosts =  128
+Number of hosts under each switch =  4
+Number of edge switch under each pod =  4
+------------- 
+Finished connecting edge switches and hosts  
+Finished connecting aggregate switches and edge switches  
+Finished connecting core switches and aggregate switches  
+creating On/Off traffic
+From: 10.1.0.1 dstaddr: 10.1.0.11
+From: 10.1.0.2 dstaddr: 10.1.0.19
+From: 10.1.0.3 dstaddr: 10.1.0.81
+From: 10.1.0.4 dstaddr: 10.1.0.20
+From: 10.1.0.5 dstaddr: 10.1.0.5
+From: 10.1.0.6 dstaddr: 10.1.0.89
+From: 10.1.0.7 dstaddr: 10.1.0.124
+From: 10.1.0.8 dstaddr: 10.1.0.107
+From: 10.1.0.9 dstaddr: 10.1.0.65
+From: 10.1.0.10 dstaddr: 10.1.0.16
+From: 10.1.0.11 dstaddr: 10.1.0.30
+From: 10.1.0.12 dstaddr: 10.1.0.114
+From: 10.1.0.13 dstaddr: 10.1.0.86
+From: 10.1.0.14 dstaddr: 10.1.0.95
+From: 10.1.0.15 dstaddr: 10.1.0.16
+From: 10.1.0.16 dstaddr: 10.1.0.66
+From: 10.1.0.17 dstaddr: 10.1.0.75
+From: 10.1.0.18 dstaddr: 10.1.0.112
+From: 10.1.0.19 dstaddr: 10.1.0.63
+From: 10.1.0.20 dstaddr: 10.1.0.98
+From: 10.1.0.21 dstaddr: 10.1.0.126
+From: 10.1.0.22 dstaddr: 10.1.0.3
+From: 10.1.0.23 dstaddr: 10.1.0.86
+From: 10.1.0.24 dstaddr: 10.1.0.118
+From: 10.1.0.25 dstaddr: 10.1.0.118
+From: 10.1.0.26 dstaddr: 10.1.0.10
+From: 10.1.0.27 dstaddr: 10.1.0.9
+From: 10.1.0.28 dstaddr: 10.1.0.52
+From: 10.1.0.29 dstaddr: 10.1.0.111
+From: 10.1.0.30 dstaddr: 10.1.0.7
+From: 10.1.0.31 dstaddr: 10.1.0.18
+From: 10.1.0.32 dstaddr: 10.1.0.34
+From: 10.1.0.33 dstaddr: 10.1.0.11
+From: 10.1.0.34 dstaddr: 10.1.0.104
+From: 10.1.0.35 dstaddr: 10.1.0.49
+From: 10.1.0.36 dstaddr: 10.1.0.71
+From: 10.1.0.37 dstaddr: 10.1.0.37
+From: 10.1.0.38 dstaddr: 10.1.0.34
+From: 10.1.0.39 dstaddr: 10.1.0.25
+From: 10.1.0.40 dstaddr: 10.1.0.123
+From: 10.1.0.41 dstaddr: 10.1.0.95
+From: 10.1.0.42 dstaddr: 10.1.0.40
+From: 10.1.0.43 dstaddr: 10.1.0.58
+From: 10.1.0.44 dstaddr: 10.1.0.83
+From: 10.1.0.45 dstaddr: 10.1.0.16
+From: 10.1.0.46 dstaddr: 10.1.0.13
+From: 10.1.0.47 dstaddr: 10.1.0.118
+From: 10.1.0.48 dstaddr: 10.1.0.127
+From: 10.1.0.49 dstaddr: 10.1.0.96
+From: 10.1.0.50 dstaddr: 10.1.0.51
+From: 10.1.0.51 dstaddr: 10.1.0.25
+From: 10.1.0.52 dstaddr: 10.1.0.7
+From: 10.1.0.53 dstaddr: 10.1.0.91
+From: 10.1.0.54 dstaddr: 10.1.0.10
+From: 10.1.0.55 dstaddr: 10.1.0.125
+From: 10.1.0.56 dstaddr: 10.1.0.59
+From: 10.1.0.57 dstaddr: 10.1.0.70
+From: 10.1.0.58 dstaddr: 10.1.0.107
+From: 10.1.0.59 dstaddr: 10.1.0.126
+From: 10.1.0.60 dstaddr: 10.1.0.107
+From: 10.1.0.61 dstaddr: 10.1.0.77
+From: 10.1.0.62 dstaddr: 10.1.0.67
+From: 10.1.0.63 dstaddr: 10.1.0.101
+From: 10.1.0.64 dstaddr: 10.1.0.8
+From: 10.1.0.65 dstaddr: 10.1.0.83
+From: 10.1.0.66 dstaddr: 10.1.0.45
+From: 10.1.0.67 dstaddr: 10.1.0.2
+From: 10.1.0.68 dstaddr: 10.1.0.28
+From: 10.1.0.69 dstaddr: 10.1.0.119
+From: 10.1.0.70 dstaddr: 10.1.0.29
+From: 10.1.0.71 dstaddr: 10.1.0.49
+From: 10.1.0.72 dstaddr: 10.1.0.113
+From: 10.1.0.73 dstaddr: 10.1.0.30
+From: 10.1.0.74 dstaddr: 10.1.0.112
+From: 10.1.0.75 dstaddr: 10.1.0.88
+From: 10.1.0.76 dstaddr: 10.1.0.128
+From: 10.1.0.77 dstaddr: 10.1.0.64
+From: 10.1.0.78 dstaddr: 10.1.0.2
+From: 10.1.0.79 dstaddr: 10.1.0.4
+From: 10.1.0.80 dstaddr: 10.1.0.103
+From: 10.1.0.81 dstaddr: 10.1.0.115
+From: 10.1.0.82 dstaddr: 10.1.0.64
+From: 10.1.0.83 dstaddr: 10.1.0.55
+From: 10.1.0.84 dstaddr: 10.1.0.78
+From: 10.1.0.85 dstaddr: 10.1.0.115
+From: 10.1.0.86 dstaddr: 10.1.0.62
+From: 10.1.0.87 dstaddr: 10.1.0.41
+From: 10.1.0.88 dstaddr: 10.1.0.26
+From: 10.1.0.89 dstaddr: 10.1.0.106
+From: 10.1.0.90 dstaddr: 10.1.0.23
+From: 10.1.0.91 dstaddr: 10.1.0.3
+From: 10.1.0.92 dstaddr: 10.1.0.110
+From: 10.1.0.93 dstaddr: 10.1.0.27
+From: 10.1.0.94 dstaddr: 10.1.0.122
+From: 10.1.0.95 dstaddr: 10.1.0.26
+From: 10.1.0.96 dstaddr: 10.1.0.53
+From: 10.1.0.97 dstaddr: 10.1.0.31
+From: 10.1.0.98 dstaddr: 10.1.0.18
+From: 10.1.0.99 dstaddr: 10.1.0.108
+From: 10.1.0.100 dstaddr: 10.1.0.113
+From: 10.1.0.101 dstaddr: 10.1.0.81
+From: 10.1.0.102 dstaddr: 10.1.0.60
+From: 10.1.0.103 dstaddr: 10.1.0.18
+From: 10.1.0.104 dstaddr: 10.1.0.125
+From: 10.1.0.105 dstaddr: 10.1.0.83
+From: 10.1.0.106 dstaddr: 10.1.0.100
+From: 10.1.0.107 dstaddr: 10.1.0.55
+From: 10.1.0.108 dstaddr: 10.1.0.91
+From: 10.1.0.109 dstaddr: 10.1.0.101
+From: 10.1.0.110 dstaddr: 10.1.0.97
+From: 10.1.0.111 dstaddr: 10.1.0.41
+From: 10.1.0.112 dstaddr: 10.1.0.56
+From: 10.1.0.113 dstaddr: 10.1.0.44
+From: 10.1.0.114 dstaddr: 10.1.0.75
+From: 10.1.0.115 dstaddr: 10.1.0.80
+From: 10.1.0.116 dstaddr: 10.1.0.40
+From: 10.1.0.117 dstaddr: 10.1.0.17
+From: 10.1.0.118 dstaddr: 10.1.0.59
+From: 10.1.0.119 dstaddr: 10.1.0.20
+From: 10.1.0.120 dstaddr: 10.1.0.25
+From: 10.1.0.121 dstaddr: 10.1.0.103
+From: 10.1.0.122 dstaddr: 10.1.0.100
+From: 10.1.0.123 dstaddr: 10.1.0.27
+From: 10.1.0.124 dstaddr: 10.1.0.9
+From: 10.1.0.125 dstaddr: 10.1.0.60
+From: 10.1.0.126 dstaddr: 10.1.0.33
+From: 10.1.0.127 dstaddr: 10.1.0.22
+From: 10.1.0.128 dstaddr: 10.1.0.20
+Finished creating On/Off traffic
+Start Simulation.. 
+Avg. Throughput: 254.253 Mbps
+Average Packet Delay: 0.0331009 ms
+TX Packets: 8832
+RX Packets: 8832
+Lost Packets: 0
+Dropped Packets: 0
+Packet Delivery Ratio: 100%
+Packet Loss Ratio: 0%
+Simulation finished 

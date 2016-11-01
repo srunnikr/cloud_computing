@@ -121,7 +121,7 @@ int
 //=========== Define parameters based on value of k ===========//
 //
 	int k = 2;			// number of BCube level, For BCube with 3 levels, level0 to level2, k should be set as 2			
-	int n = 4;			// number of servers in one BCube;
+	int n = 15;			// number of servers in one BCube;
 	int num_sw = pow (n,k);		// number of switch at each level (all levels have same number of switch) = n^k;
 	int num_host = num_sw*n;	// total number of host
 	char filename [] = "statistics/BCube.xml";	// filename for Flow Monitor xml output file
@@ -384,17 +384,18 @@ int
 	Ptr<FlowMonitor> monitor = flowmon.InstallAll();
 // Run simulation.
 //
-  	NS_LOG_INFO ("Run Simulation.");
+  	// NS_LOG_INFO ("Run Simulation.");
   	Simulator::Stop (Seconds(101.0));
   	Simulator::Run ();
 
   	monitor->CheckForLostPackets ();
-  	monitor->SerializeToXmlFile(filename, true, false);
+  	monitor->SerializeToXmlFile(filename, true, true);
+	monitor->PrintAggregatedStatistics();
 
 	std::cout << "Simulation finished "<<"\n";
 
   	Simulator::Destroy ();
-  	NS_LOG_INFO ("Done.");
+  	// NS_LOG_INFO ("Done.");
 
 	return 0;
 }

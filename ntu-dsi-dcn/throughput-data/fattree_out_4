@@ -1,0 +1,21 @@
+Value of k =  4
+Total number of hosts =  16
+Number of hosts under each switch =  2
+Number of edge switch under each pod =  2
+------------- 
+Finished creating On/Off traffic
+Finished connecting edge switches and hosts  
+Finished connecting aggregation switches and edge switches  
+Finished connecting core switches and aggregation switches  
+------------- 
+Start Simulation.. 
+Avg. Throughput (per flow basis): 99.3185 Mbps
+Avg. Throughput: 190.023 Mbps
+Average Packet Delay: 0.0442893 ms
+TX Packets: 1104
+RX Packets: 1104
+Lost Packets: 0
+Dropped Packets: 0
+Packet Delivery Ratio: 100%
+Packet Loss Ratio: 0%
+Simulation finished 
