@@ -1,14 +1,47 @@
 #!/bin/sh
 
+num_server=1
+num_store=1
+num_cache=1
+num_dir=1
+i=0
+
 # clean existing images and containers
 echo "****************************"
 echo "*  CLEANUP EXISTING STUFF  *"
 echo "****************************"
-docker rm -f store
-docker rm -f cache
-docker rm -f dir
+while [ $i -lt $num_store ]
+do
+	name=$(printf "%s%d" "store" "$i")
+	docker rm -f $name
+	i=`expr $i + 1`
+done
+
+i=0
+while [ $i -lt $num_cache ]
+do
+	name=$(printf "%s%d" "cache" "$i")
+	docker rm -f $name
+	i=`expr $i + 1`
+done
+
+i=0
+while [ $i -lt $num_dir ]
+do
+	name=$(printf "%s%d" "dir" "$i")
+	docker rm -f $name
+	i=`expr $i + 1`
+done
+
+i=0
+while [ $i -lt $num_server ]
+do
+	name=$(printf "%s%d" "server" "$i")
+	docker rm -f $name
+	i=`expr $i + 1`
+done
+
 docker rm -f balancer
-docker rm -f server1
 
 docker rmi -f haystack_store
 docker rmi -f haystack_cache
@@ -39,9 +72,36 @@ docker build -t web_server ./web_server/
 echo "**************************************"
 echo "*    START ALL CONTAINER INSTANCES   *"
 echo "**************************************"
-docker run -itd --name store haystack_store
-docker run -itd --name cache haystack_cache
-docker run -itd --name dir haystack_dir
-docker run -p 8080:8080 -itd --name server1 web_server # use the ip address you get from "docker-machine ip default" (ip_address:8080)
-docker run -itd --name balancer load_balancer
+i=0
+while [ $i -lt $num_store ]
+do
+	name=$(printf "%s%d" "store" "$i")
+	docker run -itd --name $name haystack_store
+	i=`expr $i + 1`
+done
 
+i=0
+while [ $i -lt $num_cache ]
+do
+	name=$(printf "%s%d" "cache" "$i")
+	docker run -itd --name $name haystack_cache -m 128	# 128MB cache
+	i=`expr $i + 1`
+done
+
+i=0
+while [ $i -lt $num_dir ]
+do
+	name=$(printf "%s%d" "dir" "$i")
+	docker run -itd --name $name haystack_dir
+	i=`expr $i + 1`
+done
+
+i=0
+while [ $i -lt $num_server ]
+do
+	name=$(printf "%s%d" "server" "$i")
+	docker run -p 8080:8080 -itd --name $name web_server # use the ip address you get from "docker-machine ip default" (ip_address:8080)
+	i=`expr $i + 1`
+done
+
+docker run -itd --name balancer load_balancer
