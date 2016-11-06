@@ -13,12 +13,8 @@ class haystackCacheController():
         self.client = Client(self.memcacheServers[0])
 
     def queryMemcache(self, key):
-        result = self.client.get(key)
-        print "query result: ", result
-        if result == None:
-            print "Writing so that we dont miss next time"
-            self.writeMemcache(key, "value")
-        return result
+        photo = self.client.get(key)
+        return photo
 
     def writeMemcache(self, key, value):
         self.client.set(key, value)
