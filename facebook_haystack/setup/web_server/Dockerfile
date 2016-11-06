@@ -1,5 +1,14 @@
-FROM java:latest
-MAINTAINER Amit Borase <aborase@eng.ucsd.edu>
-#RUN apt-get update && apt-get install -y python
-#COPY catserver.py /catserver.py
-# RUN /bin/bash
+FROM node:latest
+
+RUN mkdir -p /user/src/app
+WORKDIR /usr/src/app
+
+COPY package.json /usr/src/app
+RUN npm install
+
+COPY server.js /usr/src/app
+
+EXPOSE 8080
+
+CMD [ "npm", "start" ]
+

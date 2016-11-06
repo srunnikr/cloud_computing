@@ -9,7 +9,6 @@ docker rm -f cache
 docker rm -f dir
 docker rm -f balancer
 docker rm -f server1
-docker rm -f server2
 
 docker rmi -f haystack_store
 docker rmi -f haystack_cache
@@ -43,7 +42,6 @@ echo "**************************************"
 docker run -itd --name store haystack_store
 docker run -itd --name cache haystack_cache
 docker run -itd --name dir haystack_dir
-docker run -itd --name server1 web_server
-docker run -itd --name server2 web_server
+docker run  -itd --name server1 web_server
 docker run -itd --name balancer load_balancer
 
