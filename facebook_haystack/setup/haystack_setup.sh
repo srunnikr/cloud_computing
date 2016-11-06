@@ -42,6 +42,6 @@ echo "**************************************"
 docker run -itd --name store haystack_store
 docker run -itd --name cache haystack_cache
 docker run -itd --name dir haystack_dir
-docker run  -itd --name server1 web_server
+docker run -p 8080:8080 -itd --name server1 web_server # use the ip address you get from "docker-machine ip default" (ip_address:8080)
 docker run -itd --name balancer load_balancer
 
