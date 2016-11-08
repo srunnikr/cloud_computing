@@ -14,9 +14,11 @@ CACHE_IP_BLOCK=2        # IP Range: 192.168.2.X
 DIR_IP_BLOCK=3          # IP Range: 192.168.3.X
 SERVER_IP_BLOCK=4       # IP Range: 192.168.4.X
 BALANCER_IP_BLOCK=5     # IP Range: 192.168.5.X
+CACHE_SVR_IP_BLOCK=6	# IP Range: 192.168.6.X
 
 STORE_BASE_DIR='./haystack_store'
 CACHE_BASE_DIR='./haystack_cache'
+CACHE_SERVER_DIR='./haystack_cache_server'
 DIR_BASE_DIR='./haystack_dir'
 SERVER_BASE_DIR='./web_server'
 BALANCER_BASE_DIR='./load_balancer'
@@ -60,12 +62,14 @@ remove () {
     done
 
     docker rm -f balancer
+	docker rm -f cache_server
 
     docker rmi -f haystack_store
     docker rmi -f haystack_cache
     docker rmi -f haystack_dir
     docker rmi -f web_server
     docker rmi -f load_balancer
+	docker rmi -f haystack_cache_server
 
     docker network rm haynet
     
@@ -89,6 +93,7 @@ build () {
     echo "*******************************"
     docker build -t haystack_store $STORE_BASE_DIR
     docker build -t haystack_cache $CACHE_BASE_DIR
+	docker build -t haystack_cache_server $CACHE_SERVER_DIR
     docker build -t haystack_dir $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
     #docker build -t load_balancer $BALANCER_BASE_DIR #defer load balancer image creation for now until web server containers are not created
@@ -105,6 +110,9 @@ build () {
         docker run -itd --network=haynet --ip=$ip --name $name haystack_store
         i=`expr $i + 1`
     done
+
+	ip=$(printf "$SUBNET_BASE" $CACHE_SVR_IP_BLOCK 1)
+	docker run -itd --network=haynet --ip=$ip --name cache_server haystack_cache_server
 
     i=0
     while [ $i -lt $num_cache ]
