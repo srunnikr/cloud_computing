@@ -5,10 +5,11 @@
     "author": "First Last <first.last@example.com>",
     "main": "server.js",
     "scripts": {
-    	"start": "node server.js"
+        "start": "node server.js"
     },
     "dependencies": {
-    	"express": "^4.13.3",
-	"request": "^2.78.0"
+        "express": "^4.13.3",
+        "request": "^2.78.0",
+        "cassandra-driver": "^3.1.5"
     }
 }
