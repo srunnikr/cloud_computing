@@ -7,9 +7,10 @@ class haystackStoreController():
         print "Starting haystackStoreController instance"
         self.cassandraServers = self.getCassandraServers("haystackCassandraConfig.txt")
         print self.cassandraServers
-        # TODO: Need to make sure if the tuple is just one element or a list
-        # cassandra we just need the IP, port and load balancing are default
         self.cluster = Cluster(self.cassandraServers)
+
+        print "Testing connections"
+        self.cluster.connect()
 
     def queryStore(self, key):
         session = self.cluster.connect()
@@ -28,5 +29,5 @@ class haystackStoreController():
         with open(configFile, "r") as f:
             data = f.readlines()
             for line in data:
-                s.append(line)
+                s.append(line.strip())
         return s
