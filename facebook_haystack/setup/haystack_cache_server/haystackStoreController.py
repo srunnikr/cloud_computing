@@ -7,7 +7,7 @@ class haystackStoreController():
         print "Starting haystackStoreController instance"
         self.cassandraServers = self.getCassandraServers("haystackCassandraConfig.txt")
         print self.cassandraServers
-        self.cluster = Cluster(self.cassandraServers)
+        self.cluster = Cluster(self.cassandraServers, port=9042)
 
         print "Testing connections"
         self.cluster.connect()

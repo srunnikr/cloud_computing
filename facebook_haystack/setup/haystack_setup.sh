@@ -64,12 +64,12 @@ remove () {
     docker rm -f balancer
 	docker rm -f cache_server
 
-    docker rmi -f haystack_store
-    docker rmi -f haystack_cache
-    docker rmi -f haystack_dir
-    docker rmi -f web_server
-    docker rmi -f load_balancer
-	docker rmi -f haystack_cache_server
+    #docker rmi -f haystack_store
+    #docker rmi -f haystack_cache
+    #docker rmi -f haystack_dir
+    #docker rmi -f web_server
+    #docker rmi -f load_balancer
+	#docker rmi -f haystack_cache_server
 
     docker network rm haynet
     
@@ -111,6 +111,10 @@ build () {
         i=`expr $i + 1`
     done
 
+    # Temporary workaround
+    echo "Waiting for Haystack Store to initialize..."
+    sleep 120
+
 	ip=$(printf "$SUBNET_BASE" $CACHE_SVR_IP_BLOCK 1)
 	docker run -itd --network=haynet --ip=$ip --name cache_server haystack_cache_server
 
@@ -131,6 +135,10 @@ build () {
         docker run -itd --network=haynet --ip=$ip --name $name haystack_dir
         i=`expr $i + 1`
     done
+    
+    # Temporary workaround
+    echo "Waiting for Haystack Directory to initialize..."
+    sleep 120
 
     i=0
     web_server_ips=( )
