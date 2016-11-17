@@ -7,31 +7,32 @@ const app = express();
 const PORT = 8080;
 const MAX_VOLUME_ID = 8;
 const MEMCACHED_IP = '192.168.1.3';
+var uuid = require('node-uuid');
 
-// /* ######## store setup   ######## */
-// const dataStore = '192.168.1.1';
-// const cassandra = require('cassandra-driver');
-// const client = new cassandra.Client({ contactPoints: [dataStore] });
+/* ######## store setup   ######## */
+const dataStore = '192.168.1.1';
+const cassandra = require('cassandra-driver');
+const client = new cassandra.Client({ contactPoints: [dataStore] });
 
-// // connect to the database
-// client.connect(function (err) {
-//   if (err) return console.error(err);
-//   console.log('Connected to cluster with %d host(s): %j', client.hosts.length, client.hosts.keys());
-// });
+// connect to the database
+client.connect(function (err) {
+  if (err) return console.error(err);
+  console.log('Connected to cluster with %d host(s): %j', client.hosts.length, client.hosts.keys());
+});
 
-// // create the keyspace
-// const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}";
-// client.execute(q, function (err, result) {
-//     if (err) return console.error(err);
-//     console.log("Created the keyspace")
-// });
+// create the keyspace
+const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}";
+client.execute(q, function (err, result) {
+    if (err) return console.error(err);
+    console.log("Created the keyspace")
+});
 
-// // create the table (temporary schema)
-// client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
-//     if (err) return console.error(err);
-//     console.log("Created the table");
-// });
-// /* ######## end of store setup   ######## */
+// create the table (temporary schema)
+client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
+    if (err) return console.error(err);
+    console.log("Created the table");
+});
+/* ######## end of store setup   ######## */
 
 
 /* ########  haystack directory setup   ######## */
@@ -57,6 +58,13 @@ client_haystack_dir.execute('CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_me
     if (err) return console.error(err);
     console.log("Created the table");
 });
+
+//create the logicalto machineID mapping
+client_haystack_dir.execute('CREATE TABLE IF NOT EXISTS haystack_dir_db.logical_to_machine(logical_id int PRIMARY KEY, machine_id', function (err, result) {
+    if (err) return console.error(err);
+    console.log("Created the table");
+});
+
 /* ######## end of haystack directory setup ######## */
 
 
@@ -92,6 +100,8 @@ function createCookie() {
     result += chars[Math.floor(Math.random() * chars.length)];
   return result;
 }
+
+//TODO Functions to maintain and update logical to machine ID mapping
 
 function addMetadataToHaystackDir(photo_id) {
 	var insert_metadata_query = 'INSERT INTO haystack_dir_db.photo_metadata (photo_id, cookie, logical_volume_id, alt_key, delete_flag) VALUES (:photo_id, :cookie, :logical_volume_id, :alt_key, :delete_flag)';
@@ -140,9 +150,23 @@ function createURL(photo_id, callback) {
         callback(url);
         return;
       }
-
       var result_row = result.rows[0];
-      url += "/" + result_row.logical_volume_id + "/" + photo_id 
+	  
+	  var get_machine_ID_query = 'SELECT machine_id FROM haystack_dir_db.logical_to_machine WHERE logical_id = :logical_id'
+	  var params_mid = {logical_id: result_row.logical_volume_id};
+	  var machineID = '';
+	  client_haystack_dir.execute(get_machine_ID_query,params_mid, { prepare: true},
+		function (err,res){
+			if (err) return console.error(err);
+			console.log("Retrieved machine ID for " + result_row.logical_volume_id);
+			if (res.rows.length == 0) {
+				callback(machineID);
+				return;
+			}
+			machineID += res.rows[0].machine_id;
+		});
+	  
+      url += "/" + machineID + "/" + result_row.logical_volume_id + "/" + photo_id 
       + ".jpg?cookie=" + result_row.cookie;
       console.log("URL for " + photo_id + ": " + url);
       callback(url);
@@ -174,11 +198,12 @@ app.delete('/photos/:photo_id/delete', function(req, res) {
   res.send("Photo id (DELETE): " + req.params.photo_id);
  });
 
-app.post('/photos/:photo_id', function(req, res) {
-  console.log(req.params.photo_id);
-  addMetadataToHaystackDir(req.params.photo_id);
+app.post('/photos', function(req, res) {
+  //console.log(req.params.photo_id);
+  var assign_photo_id = uuid.v1();
+  console.log(assign_photo_id);
+  addMetadataToHaystackDir(assign_photo_id);
   // TODO: post to dataStore
-  //call addMetadataToHaystackDir here
   res.send("Photo upload (POST)");
 });
 
