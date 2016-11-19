@@ -2,15 +2,20 @@
 
 const express = require('express');
 const request = require('request');
+const uuid = require('node-uuid');
+const fs = require('fs');
+const querystring = require('querystring');
+const utils = require('utils');
+
 const directory = 'http://localhost:8080'; // PLACEHOLDER
 const app = express();
 const PORT = 8080;
-const MAX_VOLUME_ID = 8;
+const MAX_MACHINE_ID = 8;
+const MAX_VOLUME_ID = 4;
 const MEMCACHED_IP = '192.168.1.3';
-var uuid = require('node-uuid');
 
 /* ######## store setup   ######## */
-const dataStore = '192.168.1.1';
+const dataStore = '127.0.0.1';
 const cassandra = require('cassandra-driver');
 const client = new cassandra.Client({ contactPoints: [dataStore] });
 
@@ -21,14 +26,14 @@ client.connect(function (err) {
 });
 
 // create the keyspace
-const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}";
+const q = "CREATE KEYSPACE IF NOT EXISTS haystack_store_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}";
 client.execute(q, function (err, result) {
     if (err) return console.error(err);
     console.log("Created the keyspace")
 });
 
 // create the table (temporary schema)
-client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
+client.execute('CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, data blob)', function (err, result) {
     if (err) return console.error(err);
     console.log("Created the table");
 });
@@ -54,13 +59,7 @@ client_haystack_dir.execute(create_keyspace_query, function (err, result) {
 });
 
 // create the photo_metadata table
-client_haystack_dir.execute('CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_metadata(photo_id int PRIMARY KEY, cookie text, logical_volume_id int, alt_key int, delete_flag boolean)', function (err, result) {
-    if (err) return console.error(err);
-    console.log("Created the table");
-});
-
-//create the logicalto machineID mapping
-client_haystack_dir.execute('CREATE TABLE IF NOT EXISTS haystack_dir_db.logical_to_machine(logical_id int PRIMARY KEY, machine_id', function (err, result) {
+client_haystack_dir.execute('CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_metadata(photo_id text PRIMARY KEY, cookie text, machine_id int, logical_volume_id int, alt_key int, delete_flag boolean)', function (err, result) {
     if (err) return console.error(err);
     console.log("Created the table");
 });
@@ -72,6 +71,10 @@ function isReadOnly(volume_id) {
 	// TODO
   // check used space of the volume and then mark accordingly
 	return true;
+}
+
+function getMachineId() {
+  return Math.floor(Math.random() * MAX_MACHINE_ID);
 }
 
 function getVolumeId() {
@@ -103,17 +106,21 @@ function createCookie() {
 
 //TODO Functions to maintain and update logical to machine ID mapping
 
-function addMetadataToHaystackDir(photo_id) {
-	var insert_metadata_query = 'INSERT INTO haystack_dir_db.photo_metadata (photo_id, cookie, logical_volume_id, alt_key, delete_flag) VALUES (:photo_id, :cookie, :logical_volume_id, :alt_key, :delete_flag)';
-	var m_cookie = createCookie();
+function addMetadataToHaystackDir(photo_id, callback) {
+	var insert_metadata_query = 'INSERT INTO haystack_dir_db.photo_metadata (photo_id, cookie, machine_id, logical_volume_id, alt_key, delete_flag) VALUES (:photo_id, :cookie, :machine_id, :logical_volume_id, :alt_key, :delete_flag)';
+	
+  var m_cookie = createCookie();
 	var m_logical_volume_id = getVolumeId();
 	var m_alt_key = createAltKey(photo_id);
-	var params = { photo_id: photo_id, cookie: m_cookie, logical_volume_id: m_logical_volume_id, alt_key: m_alt_key, delete_flag: false};
+  var m_machine_id = getMachineId();
+
+	var params = { photo_id: photo_id, cookie: m_cookie, machine_id: m_machine_id, logical_volume_id: m_logical_volume_id, alt_key: m_alt_key, delete_flag: false};
 	
   client_haystack_dir.execute(insert_metadata_query, params, { prepare: true }, 
     function (err, result) {
       if (err) return console.error(err);
       console.log("Added metadata to photo_metadata");
+      callback(params);
     }
   );
 
@@ -146,27 +153,15 @@ function createURL(photo_id, callback) {
     function (err, result) {
       if (err) return console.error(err);
       console.log("Retrieved metadata for " + photo_id);
+      
       if (result.rows.length == 0) {
         callback(url);
         return;
       }
+
       var result_row = result.rows[0];
-	  
-	  var get_machine_ID_query = 'SELECT machine_id FROM haystack_dir_db.logical_to_machine WHERE logical_id = :logical_id'
-	  var params_mid = {logical_id: result_row.logical_volume_id};
-	  var machineID = '';
-	  client_haystack_dir.execute(get_machine_ID_query,params_mid, { prepare: true},
-		function (err,res){
-			if (err) return console.error(err);
-			console.log("Retrieved machine ID for " + result_row.logical_volume_id);
-			if (res.rows.length == 0) {
-				callback(machineID);
-				return;
-			}
-			machineID += res.rows[0].machine_id;
-		});
-	  
-      url += "/" + machineID + "/" + result_row.logical_volume_id + "/" + photo_id 
+	     
+      url += "/" + result_row.machine_id + "/" + result_row.logical_volume_id + "/" + photo_id 
       + ".jpg?cookie=" + result_row.cookie;
       console.log("URL for " + photo_id + ": " + url);
       callback(url);
@@ -174,7 +169,35 @@ function createURL(photo_id, callback) {
 }
 
 app.get('/', function (req, res) {
-  res.send('Haystack photos\n');
+  //res.send('Haystack photos\n');
+  res.sendFile('index.html', {root: '.'});
+});
+
+app.post('/', function(req, res) {
+  console.log("Received general POST");
+  console.log("[200] " + req.method + " to " + req.url);
+  var fullBody = '';
+  
+  req.on('data', function(chunk) {
+    // append the current chunk of data to the fullBody variable
+    fullBody += chunk.toString();
+  });
+  
+  req.on('end', function() {
+  
+    // request ended -> do something with the data
+    res.writeHead(200, "OK", {'Content-Type': 'text/html'});
+    
+    // parse the received body data
+    var decodedBody = querystring.parse(fullBody);
+
+    // output the decoded data to the HTTP response          
+    // res.write('<html><head><title>Post data</title></head><body><pre>');
+    //res.write();
+    // res.write('</pre></body></html>');
+    res.end();
+  });
+
 });
 
 /* Photo retrieval */
@@ -202,7 +225,13 @@ app.post('/photos', function(req, res) {
   //console.log(req.params.photo_id);
   var assign_photo_id = uuid.v1();
   console.log(assign_photo_id);
-  addMetadataToHaystackDir(assign_photo_id);
+  addMetadataToHaystackDir(assign_photo_id, 
+    function(params) {
+      // send the photo blob to store    
+    }
+  );
+
+
   // TODO: post to dataStore
   res.send("Photo upload (POST)");
 });
