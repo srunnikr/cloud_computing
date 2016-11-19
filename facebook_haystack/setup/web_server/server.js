@@ -3,57 +3,84 @@
 const express = require('express');
 const request = require('request');
 const sleep = require('sleep');
-const directory = 'http://localhost:8080'; // PLACEHOLDER
 const app = express();
 const PORT = 8080;
 
-/* ######## store setup   ######## */
-const dataStore = '192.168.1.1';
+/* ######## store & directory setup   ######## */
 const cassandra = require('cassandra-driver');
-const client = new cassandra.Client({ contactPoints: [dataStore] });
+const dataStore = '192.168.1.1';
+const storeClient = new cassandra.Client({ contactPoints: [dataStore] });
+const directory = '192.168.3.1';
+const directoryClient = new cassandra.Client({ contactPoints: [directory] });
 
-// connect to the database
+const createStoreKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_store_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
+const createStoreTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, cookie text, delete_flag boolean, data text)';
+const createDirectoryKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_dir_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
+const createDirectoryTable = 'CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_metadata(photo_id text PRIMARY KEY, cookie text, machine_id int, logical_volume_id int, alt_key int, delete_flag boolean)';
+
+storeConnect();
 var tries = 1;
-connect();
-function connect() {
-	client.connect(function (err) {
+function storeConnect() {
+	storeClient.connect(function (err) {
 	  if (err) {
 		  if (tries <= 20) {
-			 console.log("Failed to connect to Cassandra. Trying again in 5 seconds: " + tries);
+			 console.log("Failed to connect to Cassandra store. Trying again in 5 seconds: " + tries);
 			 tries++;
 			 sleep.sleep(5);
-			 connect();
+			 storeConnect();
 		  } else {
-			  return console.error("Failed to connect to Cassandra after 20 tries: " + err); 
+			  return console.error("Failed to connect to Cassandra store after 20 tries: " + err); 
 		  }
 	  } else {
-		 console.log('Connected to cluster with %d host(s): %j', client.hosts.length, client.hosts.keys());
-		 createKeyspace();
+		 console.log('Connected to store with %d host(s): %j', storeClient.hosts.length, storeClient.hosts.keys());
+		 build(storeClient, createStoreKeyspace, createStoreTable, "store");
+		 tries = 1;
+		 directoryConnect(); // now connect to the directory
 	  }
 	});
 }
 
-// create the keyspace
-function createKeyspace() {
-	const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}"
-	client.execute(q, function (err, result) {
+function directoryConnect() {
+	directoryClient.connect(function (err) {
+	  if (err) {
+		  if (tries <= 20) {
+			 console.log("Failed to connect to Cassandra directory. Trying again in 5 seconds: " + tries);
+			 tries++;
+			 sleep.sleep(5);
+			 directoryConnect();
+		  } else {
+			  return console.error("Failed to connect to Cassandra directory after 20 tries: " + err); 
+		  }
+	  } else {
+		 console.log('Connected to directory with %d host(s): %j', directoryClient.hosts.length, directoryClient.hosts.keys());
+		 build(directoryClient, createDirectoryKeyspace, createDirectoryTable, "directory");
+	  }
+	});
+}
+
+function build(client, keyspace, table, type) {
+	const q = "";
+	client.execute(keyspace, function (err, result) {
 		if (err) {
 			return console.error(err);
 		} else {
-			console.log("Created the keyspace");
-		    createTable();			
+			console.log("Created the keyspace for " + type);
+		    createTable(client, table, type);			
 		}
 	});
 }
 
-// create the table (temporary schema)
-function createTable() {
-	client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob, deleted boolean)', function (err, result) {
-		if (err) return console.error(err);
-		console.log("Created the table");
+function createTable(client, q, type) {
+	client.execute(q, function (err, result) {
+		if (err) {
+			return console.error(err);
+		} else {
+			console.log("Created the table for " + type);
+		}
 	});
 }
-/* ######## end of store setup   ######## */
+/* ######## end of store & directory setup   ######## */
+
 
 app.get('/', function (req, res) {
   res.send('Haystack photos\n');
