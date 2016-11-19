@@ -11,17 +11,18 @@ class haystackStoreController():
 
         print "Testing connections"
         self.cluster.connect_timeout = 120
-        self.cluster.connect()
+        self.session = self.cluster.connect()
+        self.session.set_keyspace("haystack_store_db")
 
     def queryStore(self, key):
         session = self.cluster.connect()
-        # Add query here for cassandra
-        # session.execute('SELECT id, photo FROM phtots WHERE id = key')
-        return None
+        rows = self.session.execute('SELECT photo_id, data FROM phtots WHERE id = key')
+        # Assuming there are no duplicate photo ids
+        return rows[0].data
 
     def writeStore(self, key, data):
-        # Add code to write to cassandra server
-        pass
+        # Write to store done by the webserver, not the web proxy to cache
+        print "Write function for store not supported from web server on cache"
 
     def getCassandraServers(self, configFile):
         # returns a list of IP addresses of the servers. Port and load balancing
