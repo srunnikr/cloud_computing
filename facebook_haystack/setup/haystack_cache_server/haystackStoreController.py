@@ -10,6 +10,7 @@ class haystackStoreController():
         self.cluster = Cluster(self.cassandraServers, port=9042)
 
         print "Testing connections"
+        self.cluster.connect_timeout = 120
         self.cluster.connect()
 
     def queryStore(self, key):
