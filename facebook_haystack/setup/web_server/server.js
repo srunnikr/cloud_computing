@@ -2,6 +2,7 @@
 
 const express = require('express');
 const request = require('request');
+const sleep = require('sleep');
 const directory = 'http://localhost:8080'; // PLACEHOLDER
 const app = express();
 const PORT = 8080;
@@ -12,23 +13,46 @@ const cassandra = require('cassandra-driver');
 const client = new cassandra.Client({ contactPoints: [dataStore] });
 
 // connect to the database
-client.connect(function (err) {
-  if (err) return console.error(err);
-  console.log('Connected to cluster with %d host(s): %j', client.hosts.length, client.hosts.keys());
-});
+var tries = 1;
+connect();
+function connect() {
+	client.connect(function (err) {
+	  if (err) {
+		  if (tries <= 20) {
+			 console.log("Failed to connect to Cassandra. Trying again in 5 seconds: " + tries);
+			 tries++;
+			 sleep.sleep(5);
+			 connect();
+		  } else {
+			  return console.error("Failed to connect to Cassandra after 20 tries: " + err); 
+		  }
+	  } else {
+		 console.log('Connected to cluster with %d host(s): %j', client.hosts.length, client.hosts.keys());
+		 createKeyspace();
+	  }
+	});
+}
 
 // create the keyspace
-const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}"
-client.execute(q, function (err, result) {
-    if (err) return console.error(err);
-    console.log("Created the keyspace")
-});
+function createKeyspace() {
+	const q = "CREATE KEYSPACE IF NOT EXISTS cse291 WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}"
+	client.execute(q, function (err, result) {
+		if (err) {
+			return console.error(err);
+		} else {
+			console.log("Created the keyspace");
+		    createTable();			
+		}
+	});
+}
 
 // create the table (temporary schema)
-client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
-    if (err) return console.error(err);
-    console.log("Created the table");
-});
+function createTable() {
+	client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
+		if (err) return console.error(err);
+		console.log("Created the table");
+	});
+}
 /* ######## end of store setup   ######## */
 
 app.get('/', function (req, res) {

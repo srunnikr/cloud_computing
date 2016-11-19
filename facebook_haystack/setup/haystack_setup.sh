@@ -64,12 +64,12 @@ remove () {
     docker rm -f balancer
 	docker rm -f cache_server
 
-    #docker rmi -f haystack_store
-    #docker rmi -f haystack_cache
-    #docker rmi -f haystack_dir
-    #docker rmi -f web_server
-    #docker rmi -f load_balancer
-	#docker rmi -f haystack_cache_server
+    docker rmi -f haystack_store
+    docker rmi -f haystack_cache 
+    docker rmi -f haystack_dir
+    docker rmi -f web_server
+    docker rmi -f load_balancer
+	#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
     
