@@ -225,11 +225,9 @@ function addMetadataToHaystackDir(photo_id, callback) {
 	var m_machine_id = getMachineId();
 	var params = { photo_id: photo_id, cookie: m_cookie, machine_id: m_machine_id, logical_volume_id: m_logical_volume_id, alt_key: m_alt_key, delete_flag: false };
 
-	directoryClient.execute(insert_metadata_query, params, { prepare: true },
-	function (err, result) {
+	directoryClient.execute(insert_metadata_query, params, { prepare: true }, function (err, result) {
 		if (err) return console.error(err);
 		console.log("Added metadata to photo_metadata");
 		callback(params);
-	}
-  );
+	});
 }
