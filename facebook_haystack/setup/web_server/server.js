@@ -48,7 +48,7 @@ function createKeyspace() {
 
 // create the table (temporary schema)
 function createTable() {
-	client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob)', function (err, result) {
+	client.execute('CREATE TABLE IF NOT EXISTS cse291.photos(id int PRIMARY KEY, data blob, deleted boolean)', function (err, result) {
 		if (err) return console.error(err);
 		console.log("Created the table");
 	});
@@ -72,9 +72,16 @@ app.get('/photos/:photo_id', function(req, res) {
 });
 
 app.delete('/photos/:photo_id/delete', function(req, res) {
-  // TODO
-    res.send("Photo id (DELETE): " + req.params.photo_id);
- });
+	const q = 'UPDATE cse291.photos SET deleted=true WHERE id=?';
+	client.execute(q, [req.params.photo_id], function (err, result) {
+		if (err) {
+			console.error(err);
+			res.status(400).send(err);
+		}
+		console.log("Deleted photo with id: " + req.params.photo_id);
+		res.status(202);
+	});
+});
 
 app.post('/photos', function(req, res) {
   // TODO: post to dataStore

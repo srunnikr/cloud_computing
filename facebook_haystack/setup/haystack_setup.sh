@@ -69,7 +69,7 @@ remove () {
     docker rmi -f haystack_dir
     docker rmi -f web_server
     docker rmi -f load_balancer
-	#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
+	docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
     
@@ -110,10 +110,19 @@ build () {
         docker run -itd --network=haynet --ip=$ip --name $name haystack_store
         i=`expr $i + 1`
     done
+	
+	i=0
+    while [ $i -lt $num_dir ]
+    do
+        name=$(printf "%s%d" "dir" "$i")
+        ip=$(printf "$SUBNET_BASE" $DIR_IP_BLOCK $(expr $i + 1))
+        docker run -itd --network=haynet --ip=$ip --name $name haystack_dir
+        i=`expr $i + 1`
+    done
 
-    # Temporary workaround
-    echo "Waiting for Haystack Store to initialize..."
-    sleep 120
+    # Temporary workaround (no longer needed, see connection retry in webserver/server.js)
+    #echo "Waiting for Haystack Store & directory to initialize..."
+    #sleep 120
 
 	ip=$(printf "$SUBNET_BASE" $CACHE_SVR_IP_BLOCK 1)
 	docker run -itd --network=haynet --ip=$ip --name cache_server haystack_cache_server
@@ -126,19 +135,6 @@ build () {
         docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
         i=`expr $i + 1`
     done
-
-    i=0
-    while [ $i -lt $num_dir ]
-    do
-        name=$(printf "%s%d" "dir" "$i")
-        ip=$(printf "$SUBNET_BASE" $DIR_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_dir
-        i=`expr $i + 1`
-    done
-    
-    # Temporary workaround
-    echo "Waiting for Haystack Directory to initialize..."
-    sleep 120
 
     i=0
     web_server_ips=( )
