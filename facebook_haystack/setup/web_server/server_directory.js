@@ -9,7 +9,7 @@ const app = express();
 const PORT = 8080;
 const MAX_MACHINE_ID = 8;
 const MAX_VOLUME_ID = 4;
-const MEMCACHED_IP = '192.168.1.3';
+const MEMCACHED_IP = '128.54.243.120:8080';
 
 /* ######## store setup   ######## */
 const dataStore = '127.0.0.1';
@@ -30,7 +30,7 @@ client.execute(q, function (err, result) {
 });
 
 // create the table (temporary schema)
-client.execute('CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, data text)', function (err, result) {
+client.execute('CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, cookie text, delete_flag boolean, data text)', function (err, result) {
     if (err) return console.error(err);
     console.log("Created the table");
 });
@@ -145,7 +145,8 @@ function deleteMetadataFromHaystackDir(photo_id) {
 function createURL(photo_id, callback) {
   var get_metadata_query = 'SELECT * FROM haystack_dir_db.photo_metadata WHERE photo_id = :photo_id';
   var params = {photo_id: photo_id};
-  var url = 'http://' + MEMCACHED_IP;
+  // var url = 'http://' + MEMCACHED_IP;
+  var url = "";
   client_haystack_dir.execute(get_metadata_query, params, { prepare: true }, 
     function (err, result) {
       if (err) return console.error(err);
@@ -189,8 +190,8 @@ app.post('/', function(req, res) {
     console.log(assign_photo_id);
     addMetadataToHaystackDir(assign_photo_id, 
       function(params) {
-        var insert_data_query = "INSERT INTO haystack_store_db.photo_data (photo_id, data) VALUES (:photo_id, :data)";
-        var parameters = {photo_id: params.photo_id, data: fullBody};
+        var insert_data_query = "INSERT INTO haystack_store_db.photo_data (photo_id, cookie, delete_flag, data) VALUES (:photo_id, :cookie, :delete_flag, :data)";
+        var parameters = {photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, data: fullBody};
         // based on machine id / logical volume
         client.execute(insert_data_query, parameters, {prepare: true},
           function(err, result){
@@ -214,16 +215,35 @@ app.post('/', function(req, res) {
 
 });
 
+/* This part should go to memcached server */
+app.get('/:machine_id/:logical_volume_id/:photo_id', function(req, res) {
+  //res.write("DAMMMMMNNNNNN... " + req.params.machine_id + " " + req.params.logical_volume_id + " " + req.params.photo_id + " " + req.query.cookie);
+
+  var select_photo_query = 'SELECT data FROM haystack_store_db.photo_data WHERE photo_id=\'' + req.params.photo_id.split(".")[0] + '\' AND cookie=\'' + req.query.cookie + '\' ALLOW FILTERING';
+  res.writeHead(200, "OK", {'Content-Type':'text/html'});
+  client_haystack_dir.execute(select_photo_query, 
+    function(err, result) {
+      if (err) console.error(err);
+      if (result.rows.length > 0)
+        res.write("<html><body><img src=" + result.rows[0].data + " /></body></html>");
+      res.end();
+    });
+});
+
 /* Photo retrieval */
 app.get('/photos/:photo_id', function(req, res) {
   // check for existence of this photo_id in memcached
   // TODO
 
+
   // get the URL from the directory
   createURL(req.params.photo_id, 
     function(url) {
-      res.send(url);
-    });
+      console.log("Sending Redirect response");
+      res.writeHead(301, "Redirect", {'Location': url});
+      res.end();
+    }
+  );
   
   // using the parameters in this URL, query the Haystack Store
   // TODO
