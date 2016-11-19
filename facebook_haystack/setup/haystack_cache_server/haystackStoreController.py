@@ -14,9 +14,8 @@ class haystackStoreController():
         self.session = self.cluster.connect()
         self.session.set_keyspace("haystack_store_db")
 
-    def queryStore(self, key):
-        session = self.cluster.connect()
-        rows = self.session.execute('SELECT photo_id, data FROM phtots WHERE photo_id = key')
+    def queryStore(self, key, cookie):
+        rows = self.session.execute('SELECT data FROM haystack_store_db.photo_data WHERE photo_id='+str(key)+'AND cookie='+str(cookie)+' ALLOW FILTERING')
         # Assuming there are no duplicate photo ids
         return rows[0].data
 
