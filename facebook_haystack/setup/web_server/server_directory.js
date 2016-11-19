@@ -3,9 +3,6 @@
 const express = require('express');
 const request = require('request');
 const uuid = require('node-uuid');
-const fs = require('fs');
-const querystring = require('querystring');
-const utils = require('utils');
 
 const directory = 'http://localhost:8080'; // PLACEHOLDER
 const app = express();
@@ -33,7 +30,7 @@ client.execute(q, function (err, result) {
 });
 
 // create the table (temporary schema)
-client.execute('CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, data blob)', function (err, result) {
+client.execute('CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, data text)', function (err, result) {
     if (err) return console.error(err);
     console.log("Created the table");
 });
@@ -174,8 +171,10 @@ app.get('/', function (req, res) {
 });
 
 app.post('/', function(req, res) {
+
   console.log("Received general POST");
   console.log("[200] " + req.method + " to " + req.url);
+  //console.log(req);
   var fullBody = '';
   
   req.on('data', function(chunk) {
@@ -184,19 +183,34 @@ app.post('/', function(req, res) {
   });
   
   req.on('end', function() {
-  
     // request ended -> do something with the data
-    res.writeHead(200, "OK", {'Content-Type': 'text/html'});
     
-    // parse the received body data
-    var decodedBody = querystring.parse(fullBody);
+    var assign_photo_id = uuid.v1();
+    console.log(assign_photo_id);
+    addMetadataToHaystackDir(assign_photo_id, 
+      function(params) {
+        var insert_data_query = "INSERT INTO haystack_store_db.photo_data (photo_id, data) VALUES (:photo_id, :data)";
+        var parameters = {photo_id: params.photo_id, data: fullBody};
+        // based on machine id / logical volume
+        client.execute(insert_data_query, parameters, {prepare: true},
+          function(err, result){
+            if (err) return console.error(err);
+            console.log("Added photo data");
+          });
 
-    // output the decoded data to the HTTP response          
-    // res.write('<html><head><title>Post data</title></head><body><pre>');
-    //res.write();
+        res.writeHead(200, "OK", {'Content-Type': 'text/html'});
+        // send the photo blob to store
+        var photo_data = params.photo_id + " " + params.machine_id + " " + params.cookie + " " + params.logical_volume_id;
+        res.write(photo_data);
+        //res.write(fullBody);
+        res.end();
+      }
+    );
+
+    
     // res.write('</pre></body></html>');
-    res.end();
   });
+
 
 });
 

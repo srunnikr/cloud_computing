@@ -1,53 +1,47 @@
 <!DOCTYPE html>
-
 <html>
 <head>
-<title>JavaScript file upload</title>
+<title>Haystack</title>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <script type="text/javascript">
-var upload = function() {
-    var photo = document.getElementById("photo");
-    var file = photo.files[0];
-    var fr = new FileReader();
+    var upload = function() {
+        var photo = document.getElementById("photo");
+        var file = photo.files[0];
+        var fr = new FileReader();
 
-    var preview = document.getElementById("preview");
-    var photoText = document.getElementById("photoText");
+        var preview = document.getElementById("preview");
+        var photoText = document.getElementById("photoText");
 
-    fr.onload = function(){preview.src = fr.result; photoText.textContent = fr.result};
-    fr.readAsDataURL(file);
+        fr.onload = function() {
+            preview.src = fr.result; 
+            photoText.textContent = fr.result; 
+            send(fr.result); 
+        };
+        
+        fr.readAsDataURL(file);
 
-    console.log("File: " + file.name + ", " + file.size + ", " + file.type);
-
-  
-    //setTimeout(function(){ }, 1000);
-    
-
-    return false;
-};
-
-var send = function () {
-    var boundary = this.generateBoundary();
-    var xhr = new XMLHttpRequest;
-
-    xhr.open("POST", "/", true);
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            alert(xhr.responseText);
-        }
+        console.log("File: " + file.name + ", " + file.size + ", " + file.type);
+        return false;
     };
-    var contentType = "multipart/form-data; boundary=" + boundary;
-    xhr.setRequestHeader("Content-Type", contentType);
 
-    for (var header in this.headers) {
-        xhr.setRequestHeader(header, headers[header]);
+    var send = function (data) {
+        var xhr = new XMLHttpRequest;
+
+        xhr.open("POST", "/", true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                var responseText = document.getElementById("responseImage");
+                responseImage.textContent = xhr.responseText;          
+                //alert(xhr.responseText);
+            }
+        };
+        
+        var contentType = "text/html";
+        xhr.setRequestHeader("Content-Type", contentType);
+
+        // finally send the request as binary data
+        xhr.send(data);
     }
-
-    // here's our data variable that we talked about earlier
-    var data = this.buildMessage(this.elements, boundary);
-
-    // finally send the request as binary data
-    xhr.sendAsBinary(data);
-}
 </script>
 </head>
 <body>
@@ -62,7 +56,8 @@ var send = function () {
   </fieldset>
 </form>
 <p id="photoText"></p>
-<button onclick="upload();"> Preview </button>
+<p id="responseImage"></p>
+<button onclick="upload();"> Upload </button>
 
 </body>
 </html>
