@@ -16,7 +16,7 @@ class haystackStoreController():
 
     def queryStore(self, key):
         session = self.cluster.connect()
-        rows = self.session.execute('SELECT photo_id, data FROM phtots WHERE id = key')
+        rows = self.session.execute('SELECT photo_id, data FROM phtots WHERE photo_id = key')
         # Assuming there are no duplicate photo ids
         return rows[0].data
 
