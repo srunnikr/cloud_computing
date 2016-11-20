@@ -19,7 +19,8 @@ const directory = '192.168.3.1';
 const directoryClient = new cassandra.Client({ contactPoints: [directory] });
 
 const createStoreKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_store_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
-const createStoreTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.photo_data(photo_id text PRIMARY KEY, cookie text, delete_flag boolean, data text)';
+const createIndexTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.index_data(photo_id text PRIMARY KEY, cookie text, delete_flag boolean, blob_id text, needle_offset int)';
+const createBlobTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.blob_data(blob_id text PRIMARY KEY, photo1 text, photo2 text, photo3 text, size int)';
 const createDirectoryKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_dir_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
 const createDirectoryTable = 'CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_metadata(photo_id text PRIMARY KEY, cookie text, machine_id int, logical_volume_id int, alt_key int, delete_flag boolean)';
 
@@ -38,7 +39,7 @@ function storeConnect() {
 			}
 		} else {
 			console.log('Connected to store with %d host(s): %j', storeClient.hosts.length, storeClient.hosts.keys());
-			build(storeClient, createStoreKeyspace, createStoreTable, "store");
+			build(storeClient, createStoreKeyspace, createIndexTable, "store");
 			tries = 1;
 			directoryConnect(); // now connect to the directory
 		}
@@ -72,6 +73,11 @@ function build(client, keyspace, table, type) {
 
 		console.log("Created the keyspace for " + type);
 		createTable(client, table, type);
+
+		// very ugly way of creating the second table
+		if (type == "store") {
+			createTable(client, createBlobTable, type);
+		}
 	});
 }
 
@@ -93,11 +99,11 @@ app.get('/', function (req, res) {
 
 app.get('/photos/:photo_id', function (req, res) {
 	createURL(req.params.photo_id, function (url) {
-        if (url == "") {
-            res.writeHead(404, "NOT FOUND");
-    		res.end();
-            return;
-        }
+		if (url == "") {
+			res.writeHead(404, "NOT FOUND");
+			res.end();
+			return;
+		}
 		console.log("Sending Redirect response");
 		res.writeHead(301, "Redirect", { 'Location': url });
 		res.end();
@@ -107,7 +113,7 @@ app.get('/photos/:photo_id', function (req, res) {
 function createURL(photo_id, callback) {
 	var get_metadata_query = 'SELECT * FROM haystack_dir_db.photo_metadata WHERE photo_id = :photo_id AND delete_flag=false ALLOW FILTERING';
 	var params = { photo_id: photo_id };
-	var url = "http://" + cacheserver ;
+	var url = "http://" + cacheserver;
 	directoryClient.execute(get_metadata_query, params, { prepare: true }, function (err, result) {
 		if (err) {
 			return console.error(err);
@@ -119,7 +125,7 @@ function createURL(photo_id, callback) {
 			return;
 		}
 
-        var result_row = result.rows[0];
+		var result_row = result.rows[0];
 		url += "/" + result_row.machine_id + "/" + result_row.logical_volume_id + "/" + photo_id + ".jpg?cookie=" + result_row.cookie;
 		console.log("URL for " + photo_id + ": " + url);
 		callback(url);
@@ -127,7 +133,7 @@ function createURL(photo_id, callback) {
 }
 
 app.delete('/photos/:photo_id/delete', function (req, res) {
-	const q = 'UPDATE haystack_store_db.photos SET delete_flag=true WHERE photo_id=?';
+	const q = 'UPDATE haystack_store_db.index_data SET delete_flag=true WHERE photo_id=?';
 	// set the flag in the store
 	storeClient.execute(q, [req.params.photo_id], function (err, result) {
 		if (err) {
@@ -164,21 +170,48 @@ app.post('/photos', function (req, res) {
 		var assign_photo_id = uuid.v1();
 		console.log(assign_photo_id);
 		addMetadataToHaystackDir(assign_photo_id, function (params) {
-			var insert_data_query = "INSERT INTO haystack_store_db.photo_data (photo_id, cookie, delete_flag, data) VALUES (:photo_id, :cookie, :delete_flag, :data)";
-			var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, data: fullBody };
+			var blobId;
+			var index;
 
-			// based on machine id / logical volume
-			storeClient.execute(insert_data_query, parameters, { prepare: true }, function (err, result) {
-				if (err) return console.error(err);
-				console.log("Added photo data");
+			// 1. find a blob with less than 3 photos
+			storeClient.execute('SELECT * FROM haystack_store_db.blob_data WHERE size < 3 ALLOW FILTERING', function (err, result) {
+				if (err) {
+					return console.error(err);
+				}
+
+				if (result.rows.length == 0) {
+					// create a new blob
+					blobId = uuid.v1();
+					index = 0;
+					storeClient.execute('INSERT INTO haystack_store_db.blob_data (blob_id) VALUES(:blobId)', { blobId: blobId }, { prepare: true }, function (error, result) { });
+					console.log("created a new blob");
+				} else {
+					var result_row = result.rows[0];
+					blobId = result_row.blob_id;
+					index = result_row.size;
+				}
+
+				// 2. add photo to blob (index + 1) will be photo1, photo2,..etc
+				var insert_blob = 'UPDATE haystack_store_db.blob_data SET photo' + (index + 1) + '=:photo_data, size=:new_size WHERE blob_id=:blob_id';
+				var parameters = { blob_id: blobId, new_size: (index + 1), photo_data: fullBody };
+				storeClient.execute(insert_blob, parameters, { prepare: true }, function (err, result) {
+					if (err) return console.error(err);
+					console.log("Added photo data");
+				});
+
+				// 3. create an index for the photo
+				var insert_index = "INSERT INTO haystack_store_db.index_data (photo_id, cookie, delete_flag, blob_id, needle_offset) VALUES (:photo_id, :cookie, :delete_flag, :blob_id, :needle_offset)";
+				var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, blob_id: blobId, needle_offset: index };
+				storeClient.execute(insert_index, parameters, { prepare: true }, function (error, result) { });
+
+				// 4. TODO: call /cacheit/photoid
 			});
 
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
 
 			// send the photo blob to store
-			// var photo_data = params.photo_id + " " + params.machine_id + " " + params.cookie + " " + params.logical_volume_id;
-            var photo_data = "172.17.0.1:8080/photos/"+params.photo_id;
-            res.write(photo_data);
+			var photo_data = "172.17.0.1:8080/photos/" + params.photo_id;
+			res.write(photo_data);
 			res.end();
 		});
 	});
