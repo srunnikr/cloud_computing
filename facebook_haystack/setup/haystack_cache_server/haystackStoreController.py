@@ -17,11 +17,31 @@ class haystackStoreController():
         self.session = self.cluster.connect()
         self.session.set_keyspace("haystack_store_db")
 
+    def queryNeedle(self, blob_id, offset):
+        rows = self.session.execute('SELECT data FROM haystack_store_db.blob_data WHERE blob_id=\''+blob_id+'\' ALLOW FILTERING ')
+        for row in rows:
+            if offset == 1:
+                return row.photo1
+            elif offset == 2:
+                return row.photo2
+            elif offset == 3:
+                return row.photo3
+            else:
+                print("Invalid needle_offset")
+                return None
+        return None
+
     def queryStore(self, key, cookie):
-        rows = self.session.execute('SELECT data FROM haystack_store_db.photo_data WHERE photo_id=\''+key+'\' AND cookie=\''+cookie+'\' ALLOW FILTERING ')
+        # Query the index file store to get blob id and offset
+        rows = self.session.execute('SELECT data FROM haystack_store_db.index_data WHERE photo_id=\''+key+'\' AND cookie=\''+cookie+'\' ALLOW FILTERING ')
         # Assuming there are no duplicate photo ids
         for row in rows:
-            return row.data
+            blob_id = row.blob_id
+            needle_offset = row.needle_offset
+            photo = self.queryNeedle(blob_id, needle_offset)
+            if photo == None:
+                return None
+            return photo
         return None
 
     def writeStore(self, key, data):
