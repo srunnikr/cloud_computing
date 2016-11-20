@@ -40,6 +40,22 @@ def writePhoto(photo_id, cookie_id):
     print ("Write request should go to the store directly")
     return status.HTTP_400_BAD_REQUEST
 
+# POST request to this URL will take the photo from store and cache it on memserver
+# URL type : /cacheit/phpto1.jpg?cookie=cookie_id
+@app.route('/cacheit/<photo_id>', methods=['POST'])
+def cachePhoto(photo_id):
+    photo_id = photo_id.split(".")[0]
+    cookie_id = str(request.args.get('cookie'))
+    print ("Caching request for photo: ",photo_id, " cookie: ", cookie_id)
+    photo = store_controller.queryStore(photo_id, cookie_id)
+    if photo == None:
+        print ("Photo not found in store, skipping the caching part")
+        resp = Response("Error while caching, not found in store",status=404)
+        return resp
+    print ("Writing to cache")
+    cache_controller.writeMemcache(photo_id+cookie_id, photo)
+    return Response(status=200)
+
 if __name__ == '__main__':
     # Create a controller instance
     app.run(host='192.168.6.1',port=8080)
