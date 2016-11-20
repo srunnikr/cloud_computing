@@ -207,7 +207,7 @@ app.post('/photos', function (req, res) {
 
 				// 3. create an index for the photo
 				var insert_index = "INSERT INTO haystack_store_db.index_data (photo_id, cookie, delete_flag, blob_id, needle_offset) VALUES (:photo_id, :cookie, :delete_flag, :blob_id, :needle_offset)";
-				var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, blob_id: blobId, needle_offset: index };
+				var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, blob_id: blobId, needle_offset: (index + 1) };
 				storeClient.execute(insert_index, parameters, { prepare: true }, function (error, result) { });
 
 				// 4. TODO: call /cacheit/photoid
