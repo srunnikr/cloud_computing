@@ -33,7 +33,7 @@ remove () {
     while [ $i -lt $num_store ]
     do
         name=$(printf "%s%d" "store" "$i")
-        docker rm -f $name
+        #docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -49,7 +49,7 @@ remove () {
     while [ $i -lt $num_dir ]
     do
         name=$(printf "%s%d" "dir" "$i")
-        docker rm -f $name
+        #docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -64,15 +64,15 @@ remove () {
     docker rm -f balancer
 	docker rm -f cache_server
 
-    docker rmi -f haystack_store
-    docker rmi -f haystack_cache 
-    docker rmi -f haystack_dir
+    #docker rmi -f haystack_store
+    docker rmi -f haystack_cache
+    #docker rmi -f haystack_dir
     docker rmi -f web_server
     docker rmi -f load_balancer
-	docker rmi -f haystack_cache_server # takes too long, comment this after the first build
+	#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
-    
+
     rm $BALANCER_BASE_DIR/nginx.conf
 }
 
@@ -107,16 +107,16 @@ build () {
     do
         name=$(printf "%s%d" "store" "$i")
         ip=$(printf "$SUBNET_BASE" $STORE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_store
+        docker run -itd --net=haynet --ip=$ip --name $name haystack_store
         i=`expr $i + 1`
     done
-	
+
 	i=0
     while [ $i -lt $num_dir ]
     do
         name=$(printf "%s%d" "dir" "$i")
         ip=$(printf "$SUBNET_BASE" $DIR_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_dir
+        docker run -itd --net=haynet --ip=$ip --name $name haystack_dir
         i=`expr $i + 1`
     done
 
@@ -124,15 +124,12 @@ build () {
     #echo "Waiting for Haystack Store & directory to initialize..."
     #sleep 120
 
-	ip=$(printf "$SUBNET_BASE" $CACHE_SVR_IP_BLOCK 1)
-	docker run -itd --network=haynet --ip=$ip --name cache_server haystack_cache_server
-
     i=0
     while [ $i -lt $num_cache ]
     do
         name=$(printf "%s%d" "cache" "$i")
         ip=$(printf "$SUBNET_BASE" $CACHE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
+        docker run -itd --net=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
         i=`expr $i + 1`
     done
 
@@ -142,10 +139,13 @@ build () {
     do
         name=$(printf "%s%d" "server" "$i")
         ip=$(printf "$SUBNET_BASE" $SERVER_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name web_server
+        docker run -itd --net=haynet --ip=$ip --name $name -p 8080:8080 web_server
         web_server_ips=(${web_server_ips[@]} $ip)
         i=`expr $i + 1`
     done
+
+    ip=$(printf "$SUBNET_BASE" $CACHE_SVR_IP_BLOCK 1)
+	docker run -itd --net=haynet --ip=$ip --name cache_server -p 8081:8080 haystack_cache_server
 
     # prepare nginx.conf with web server ips
     server_list_pattern="/#WEB_SERVER_LIST/a\\"
@@ -153,12 +153,12 @@ build () {
         server_list_pattern="${server_list_pattern}\tserver ${server_ip}:8080;\n"
     done
     sed "$server_list_pattern" $BALANCER_BASE_DIR/nginx.conf.template > $BALANCER_BASE_DIR/nginx.conf
-    
+
     #Finally build load_balancer image
     docker build -t load_balancer $BALANCER_BASE_DIR
 
     ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 1)
-    docker run -itd --network=haynet --ip=$ip --name balancer load_balancer
+    docker run -itd --net=haynet --ip=$ip --name balancer load_balancer
 
     printf "\nNOTE: Use Load Balancer IP $ip to fetch photos. Eg: curl http://$ip/\n\n"
 }

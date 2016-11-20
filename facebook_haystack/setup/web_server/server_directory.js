@@ -77,7 +77,7 @@ function getMachineId() {
 function getVolumeId() {
 	// get random volume
   var m_id = Math.floor(Math.random() * MAX_VOLUME_ID);
-	
+
   // check if it is read only
   while (!isReadOnly(m_id))
 	{
@@ -96,7 +96,7 @@ function createCookie() {
 	var result = '';
 	var length = 8;
 	var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  for (var i = length; i > 0; --i) 
+  for (var i = length; i > 0; --i)
     result += chars[Math.floor(Math.random() * chars.length)];
   return result;
 }
@@ -105,15 +105,15 @@ function createCookie() {
 
 function addMetadataToHaystackDir(photo_id, callback) {
 	var insert_metadata_query = 'INSERT INTO haystack_dir_db.photo_metadata (photo_id, cookie, machine_id, logical_volume_id, alt_key, delete_flag) VALUES (:photo_id, :cookie, :machine_id, :logical_volume_id, :alt_key, :delete_flag)';
-	
+
   var m_cookie = createCookie();
 	var m_logical_volume_id = getVolumeId();
 	var m_alt_key = createAltKey(photo_id);
   var m_machine_id = getMachineId();
 
 	var params = { photo_id: photo_id, cookie: m_cookie, machine_id: m_machine_id, logical_volume_id: m_logical_volume_id, alt_key: m_alt_key, delete_flag: false};
-	
-  client_haystack_dir.execute(insert_metadata_query, params, { prepare: true }, 
+
+  client_haystack_dir.execute(insert_metadata_query, params, { prepare: true },
     function (err, result) {
       if (err) return console.error(err);
       console.log("Added metadata to photo_metadata");
@@ -122,7 +122,7 @@ function addMetadataToHaystackDir(photo_id, callback) {
   );
 
   /*
-  client_haystack_dir.execute('SELECT * FROM haystack_dir_db.photo_metadata', 
+  client_haystack_dir.execute('SELECT * FROM haystack_dir_db.photo_metadata',
     function (err, result) {
       if (err) return console.error(err);
       for (var i = 0; i < result.rows.length; i++)
@@ -135,7 +135,7 @@ function addMetadataToHaystackDir(photo_id, callback) {
 function deleteMetadataFromHaystackDir(photo_id) {
 	var update_delete_flag_query = 'UPDATE haystack_dir_db.photo_metadata SET delete_flag=true WHERE photo_id = :photo_id';
   var params = {photo_id: photo_id};
-	client_haystack_dir.execute(query, params, { prepare: true }, 
+	client_haystack_dir.execute(query, params, { prepare: true },
     function (err, result) {
       if (err) return console.error(err);
       console.log("Updated delete_flag for " + photo_id);
@@ -147,19 +147,19 @@ function createURL(photo_id, callback) {
   var params = {photo_id: photo_id};
   // var url = 'http://' + MEMCACHED_IP;
   var url = "";
-  client_haystack_dir.execute(get_metadata_query, params, { prepare: true }, 
+  client_haystack_dir.execute(get_metadata_query, params, { prepare: true },
     function (err, result) {
       if (err) return console.error(err);
       console.log("Retrieved metadata for " + photo_id);
-      
+
       if (result.rows.length == 0) {
         callback(url);
         return;
       }
 
       var result_row = result.rows[0];
-	     
-      url += "/" + result_row.machine_id + "/" + result_row.logical_volume_id + "/" + photo_id 
+
+      url += "/" + result_row.machine_id + "/" + result_row.logical_volume_id + "/" + photo_id
       + ".jpg?cookie=" + result_row.cookie;
       console.log("URL for " + photo_id + ": " + url);
       callback(url);
@@ -177,18 +177,18 @@ app.post('/', function(req, res) {
   console.log("[200] " + req.method + " to " + req.url);
   //console.log(req);
   var fullBody = '';
-  
+
   req.on('data', function(chunk) {
     // append the current chunk of data to the fullBody variable
     fullBody += chunk.toString();
   });
-  
+
   req.on('end', function() {
     // request ended -> do something with the data
-    
+
     var assign_photo_id = uuid.v1();
     console.log(assign_photo_id);
-    addMetadataToHaystackDir(assign_photo_id, 
+    addMetadataToHaystackDir(assign_photo_id,
       function(params) {
         var insert_data_query = "INSERT INTO haystack_store_db.photo_data (photo_id, cookie, delete_flag, data) VALUES (:photo_id, :cookie, :delete_flag, :data)";
         var parameters = {photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, data: fullBody};
@@ -208,7 +208,7 @@ app.post('/', function(req, res) {
       }
     );
 
-    
+
     // res.write('</pre></body></html>');
   });
 
@@ -221,7 +221,7 @@ app.get('/:machine_id/:logical_volume_id/:photo_id', function(req, res) {
 
   var select_photo_query = 'SELECT data FROM haystack_store_db.photo_data WHERE photo_id=\'' + req.params.photo_id.split(".")[0] + '\' AND cookie=\'' + req.query.cookie + '\' ALLOW FILTERING';
   res.writeHead(200, "OK", {'Content-Type':'text/html'});
-  client_haystack_dir.execute(select_photo_query, 
+  client_haystack_dir.execute(select_photo_query,
     function(err, result) {
       if (err) console.error(err);
       if (result.rows.length > 0)
@@ -237,14 +237,14 @@ app.get('/photos/:photo_id', function(req, res) {
 
 
   // get the URL from the directory
-  createURL(req.params.photo_id, 
+  createURL(req.params.photo_id,
     function(url) {
       console.log("Sending Redirect response");
       res.writeHead(301, "Redirect", {'Location': url});
       res.end();
     }
   );
-  
+
   // using the parameters in this URL, query the Haystack Store
   // TODO
 });
@@ -259,9 +259,9 @@ app.post('/photos', function(req, res) {
   //console.log(req.params.photo_id);
   var assign_photo_id = uuid.v1();
   console.log(assign_photo_id);
-  addMetadataToHaystackDir(assign_photo_id, 
+  addMetadataToHaystackDir(assign_photo_id,
     function(params) {
-      // send the photo blob to store    
+      // send the photo blob to store
     }
   );
 

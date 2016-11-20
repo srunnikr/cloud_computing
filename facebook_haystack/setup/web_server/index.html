@@ -13,11 +13,11 @@
         var photoText = document.getElementById("photoText");
 
         fr.onload = function() {
-            preview.src = fr.result; 
-            photoText.textContent = fr.result; 
-            send(fr.result); 
+            preview.src = fr.result;
+            photoText.textContent = fr.result;
+            send(fr.result);
         };
-        
+
         fr.readAsDataURL(file);
 
         console.log("File: " + file.name + ", " + file.size + ", " + file.type);
@@ -27,15 +27,15 @@
     var send = function (data) {
         var xhr = new XMLHttpRequest;
 
-        xhr.open("POST", "/", true);
+        xhr.open("POST", "/photos", true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 var responseText = document.getElementById("responseImage");
-                responseImage.textContent = xhr.responseText;          
+                responseImage.textContent = xhr.responseText;
                 //alert(xhr.responseText);
             }
         };
-        
+
         var contentType = "text/html";
         xhr.setRequestHeader("Content-Type", contentType);
 

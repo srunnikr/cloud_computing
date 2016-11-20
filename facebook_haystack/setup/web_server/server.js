@@ -2,11 +2,14 @@
 
 const express = require('express');
 const request = require('request');
+const uuid = require('node-uuid');
 const sleep = require('sleep');
 const app = express();
 const PORT = 8080;
 app.listen(PORT);
 console.log('Web server is running on port: ' + PORT);
+
+const cacheserver = '172.17.0.1:8081';
 
 /* ######## store & directory setup   ######## */
 const cassandra = require('cassandra-driver');
@@ -90,6 +93,11 @@ app.get('/', function (req, res) {
 
 app.get('/photos/:photo_id', function (req, res) {
 	createURL(req.params.photo_id, function (url) {
+        if (url == "") {
+            res.writeHead(404, "NOT FOUND");
+    		res.end();
+            return;
+        }
 		console.log("Sending Redirect response");
 		res.writeHead(301, "Redirect", { 'Location': url });
 		res.end();
@@ -97,9 +105,9 @@ app.get('/photos/:photo_id', function (req, res) {
 });
 
 function createURL(photo_id, callback) {
-	var get_metadata_query = 'SELECT * FROM haystack_dir_db.photo_metadata WHERE photo_id = :photo_id';
+	var get_metadata_query = 'SELECT * FROM haystack_dir_db.photo_metadata WHERE photo_id = :photo_id AND delete_flag=false ALLOW FILTERING';
 	var params = { photo_id: photo_id };
-	var url = "";
+	var url = "http://" + cacheserver ;
 	directoryClient.execute(get_metadata_query, params, { prepare: true }, function (err, result) {
 		if (err) {
 			return console.error(err);
@@ -107,11 +115,11 @@ function createURL(photo_id, callback) {
 
 		console.log("Retrieved metadata for " + photo_id);
 		if (result.rows.length == 0) {
-			callback(url);
+			callback("");
 			return;
 		}
 
-		var result_row = result.rows[0];
+        var result_row = result.rows[0];
 		url += "/" + result_row.machine_id + "/" + result_row.logical_volume_id + "/" + photo_id + ".jpg?cookie=" + result_row.cookie;
 		console.log("URL for " + photo_id + ": " + url);
 		callback(url);
@@ -168,8 +176,9 @@ app.post('/photos', function (req, res) {
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
 
 			// send the photo blob to store
-			var photo_data = params.photo_id + " " + params.machine_id + " " + params.cookie + " " + params.logical_volume_id;
-			res.write(photo_data);
+			// var photo_data = params.photo_id + " " + params.machine_id + " " + params.cookie + " " + params.logical_volume_id;
+            var photo_data = "172.17.0.1:8080/photos/"+params.photo_id;
+            res.write(photo_data);
 			res.end();
 		});
 	});
