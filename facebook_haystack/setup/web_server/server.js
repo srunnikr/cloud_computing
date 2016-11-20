@@ -9,14 +9,19 @@ const PORT = 8080;
 app.listen(PORT);
 console.log('Web server is running on port: ' + PORT);
 
-const cacheserver = '172.17.0.1:8081';
+//const cacheserver = '172.17.0.1:8081';
+const cacheserver = process.env['CACHE_LB_IP'];
 
 /* ######## store & directory setup   ######## */
 const cassandra = require('cassandra-driver');
-const dataStore = '192.168.1.1';
-const storeClient = new cassandra.Client({ contactPoints: [dataStore] });
-const directory = '192.168.3.1';
-const directoryClient = new cassandra.Client({ contactPoints: [directory] });
+//const dataStore = '192.168.1.1';
+const dataStore = process.env['STORE_IPS'].split(',');
+
+const storeClient = new cassandra.Client({ contactPoints: dataStore });
+
+//const directory = '192.168.3.1';
+const directory = process.env['DIRECTORY_IPS'].split(',');
+const directoryClient = new cassandra.Client({ contactPoints: directory });
 
 const createStoreKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_store_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
 const createIndexTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.index_data(photo_id text PRIMARY KEY, cookie text, delete_flag boolean, blob_id text, needle_offset int)';
@@ -210,7 +215,7 @@ app.post('/photos', function (req, res) {
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
 
 			// send the photo blob to store
-			var photo_data = "172.17.0.1:8080/photos/" + params.photo_id;
+			var photo_data = "http://" + cacheserver + "/photos/" + params.photo_id;
 			res.write(photo_data);
 			res.end();
 		});

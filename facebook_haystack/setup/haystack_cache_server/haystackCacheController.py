@@ -29,7 +29,7 @@ class haystackCacheController():
         # returns a list of tuples of client and port
 
         caches = []
-        cache_servers_env = os.environ["CACHE_IPS"]strip().split(",")
+        cache_servers_env = os.environ["CACHE_IPS"].strip().split(",")
         for server in cache_servers_env:
             caches.append((server, MEMCACHE_PORT))
         """

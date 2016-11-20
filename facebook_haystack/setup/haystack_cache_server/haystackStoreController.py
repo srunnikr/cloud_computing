@@ -55,7 +55,7 @@ class haystackStoreController():
     def getCassandraServers(self, configFile):
         # returns a list of IP addresses of the servers. Port and load balancing
         # are the default values
-        stores = os.environ["STORE_IPS"]strip().split(",")
+        stores = os.environ["STORE_IPS"].strip().split(",")
 
         #s = []
         #with open(configFile, "r") as f:
