@@ -1,4 +1,5 @@
 from cassandra.cluster import Cluster
+import cassandra
 import os
 import time
 
@@ -6,17 +7,31 @@ class haystackStoreController():
 
     def __init__(self):
         # Configure the cluster
+        self.count = 0
         print ("Starting haystackStoreController instance")
         self.cassandraServers = self.getCassandraServers("haystackCassandraConfig.txt")
         print (self.cassandraServers)
+        policy = cassandra.policies.ConstantReconnectionPolicy(5,64)
         self.cluster = Cluster(self.cassandraServers, port=9042)
+        print ("Connecting to Haystack Store")
+        self.session = self.retry_connect()
 
-        print ("Testing connections")
-        self.cluster.connect_timeout = 120
-        # time.sleep(60)
-
-        self.session = self.cluster.connect()
-        self.session.set_keyspace("haystack_store_db")
+    def retry_connect(self):
+        try:
+            self.count += 1
+            print ("Trying to connect : ", self.count)
+            self.cluster = Cluster(self.cassandraServers, port=9042)
+            self.session = self.cluster.connect()
+            self.session.set_keyspace("haystack_store_db")
+            return self.session
+        except Exception as e:
+            if self.count > 20:
+                print ("Connection to Cassandra failed after 20 retries")
+                print(e)
+                return None
+            print ("Failed to connect, waiting for 5s to retry")
+            time.sleep(5)
+            return self.retry_connect()
 
     def queryNeedle(self, blob_id, offset):
         print ("Querying for the needle")
