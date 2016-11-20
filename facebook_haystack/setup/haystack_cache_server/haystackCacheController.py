@@ -9,11 +9,11 @@ MEMCACHE_PORT = 11211
 class haystackCacheController():
 
     def __init__(self):
-        print "Creating instance of haystackCacheController"
+        print ("Creating instance of haystackCacheController")
         # Create connections to the memcache cluster
         self.memcacheServers = self.getMemcacheServers("haystackCacheConfig.txt")
-        print self.memcacheServers
-        print "Creating memcache instance"
+        print (self.memcacheServers)
+        print ("Creating memcache instance")
         # TODO : We need a tuple for one cache or otherwise we need a list of tuples
         #self.client = Client(self.memcacheServers[0])
         self.client = HashClient(self.memcacheServers)

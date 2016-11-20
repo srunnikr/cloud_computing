@@ -82,7 +82,7 @@ remove () {
 	#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
-    
+
     rm $BALANCER_BASE_DIR/nginx.conf
 }
 
@@ -243,7 +243,7 @@ build () {
         server_list_pattern="${server_list_pattern}\tserver ${server_ip}:8080;\n"
     done
     sed "$server_list_pattern" $BALANCER_BASE_DIR/nginx.conf.template > $BALANCER_BASE_DIR/nginx.conf
-    
+
     #Finally build load_balancer image
     docker build -t web_load_balancer $BALANCER_BASE_DIR
 
