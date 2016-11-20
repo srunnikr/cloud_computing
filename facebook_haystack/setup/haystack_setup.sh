@@ -76,13 +76,13 @@ remove () {
     docker rm -f "cache_load_balancer"
     docker rm -f "web_load_balancer"
 
-    #docker rmi -f haystack_store
-    #docker rmi -f haystack_cache 
-    #docker rmi -f haystack_dir
-    #docker rmi -f web_server
-    #docker rmi -f web_load_balancer
-    #docker rmi -f cache_load_balancer
-	#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
+    docker rmi -f haystack_store
+    docker rmi -f haystack_cache 
+    docker rmi -f haystack_dir
+    docker rmi -f web_server
+    docker rmi -f web_load_balancer
+    docker rmi -f cache_load_balancer
+				#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
 
@@ -106,7 +106,7 @@ build () {
     echo "*******************************"
     docker build -t haystack_store $STORE_BASE_DIR
     docker build -t haystack_cache $CACHE_BASE_DIR
-	docker build -t haystack_cache_server $CACHE_SERVER_DIR
+				docker build -t haystack_cache_server $CACHE_SERVER_DIR
     docker build -t haystack_directory $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
 
@@ -136,8 +136,8 @@ build () {
     done
 
     # Temporary workaround (no longer needed, see connection retry in webserver/server.js)
-    echo "Waiting for Haystack Store to initialize..."
-    sleep 120
+    #echo "Waiting for Haystack Store to initialize..."
+    #sleep 120
 
 
     #############################################
@@ -194,7 +194,7 @@ build () {
     docker build -t cache_load_balancer $BALANCER_BASE_DIR
 
     ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 1)
-    docker run -itd --network=haynet --ip=$ip --name "cache_load_balancer" cache_load_balancer
+    docker run -itd --network=haynet --ip=$ip --name "cache_load_balancer" -p 81:80 cache_load_balancer
     cache_load_balancer_ip=$ip
 
 
@@ -214,10 +214,6 @@ build () {
             directory_ips=(${directory_ips[@]} $ip)
             i=`expr $i + 1`
         done
-
-    # Temporary workaround (no longer needed, see connection retry in webserver/server.js)
-    echo "Waiting for Haystack Directory to initialize..."
-    sleep 120
 
     # initiate Directory Web servers instances
     i=0
@@ -256,7 +252,7 @@ build () {
     docker build -t web_load_balancer $BALANCER_BASE_DIR
 
     ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
-    docker run -itd --network=haynet --ip=$ip --name "web_load_balancer" web_load_balancer
+    docker run -itd --network=haynet --ip=$ip --name "web_load_balancer" -p 80:80 web_load_balancer
 
     printf "\nNOTE: Use Load Balancer IP $ip to fetch photos. Eg: curl http://$ip/\n\n"
 }
