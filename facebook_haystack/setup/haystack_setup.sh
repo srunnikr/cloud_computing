@@ -76,12 +76,12 @@ remove () {
     docker rm -f "cache_load_balancer"
     docker rm -f "web_load_balancer"
 
-    docker rmi -f haystack_store
-    docker rmi -f haystack_cache 
-    docker rmi -f haystack_dir
-    docker rmi -f web_server
-    docker rmi -f web_load_balancer
-    docker rmi -f cache_load_balancer
+    #docker rmi -f haystack_store
+    #docker rmi -f haystack_cache 
+    #docker rmi -f haystack_directory
+    #docker rmi -f web_server
+    #docker rmi -f web_load_balancer
+    #docker rmi -f cache_load_balancer
 				#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 
     docker network rm haynet
@@ -106,7 +106,7 @@ build () {
     echo "*******************************"
     docker build -t haystack_store $STORE_BASE_DIR
     docker build -t haystack_cache $CACHE_BASE_DIR
-				docker build -t haystack_cache_server $CACHE_SERVER_DIR
+	docker build -t haystack_cache_server $CACHE_SERVER_DIR
     docker build -t haystack_directory $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
 
@@ -194,7 +194,7 @@ build () {
     docker build -t cache_load_balancer $BALANCER_BASE_DIR
 
     ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 1)
-    docker run -itd --network=haynet --ip=$ip --name "cache_load_balancer" -p 81:80 cache_load_balancer
+    docker run -itd --network=haynet --ip=$ip --name "cache_load_balancer" cache_load_balancer
     cache_load_balancer_ip=$ip
 
 
@@ -215,6 +215,10 @@ build () {
             i=`expr $i + 1`
         done
 
+
+    
+    web_lb_ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
+
     # initiate Directory Web servers instances
     i=0
     web_server_ips=( )
@@ -233,7 +237,7 @@ build () {
             stores_env=`echo "$stores_env,$store_ip"`
         done
 
-        docker run -itd --network=haynet --ip=$ip --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env STORE_IPS="$stores_env" --name $name web_server
+        docker run -itd --network=haynet --ip=$ip --env WEB_LB_IP="$web_lb_ip" --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env STORE_IPS="$stores_env" --name $name web_server
         web_server_ips=(${web_server_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -251,10 +255,10 @@ build () {
     #Finally build load_balancer image
     docker build -t web_load_balancer $BALANCER_BASE_DIR
 
-    ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
-    docker run -itd --network=haynet --ip=$ip --name "web_load_balancer" -p 80:80 web_load_balancer
+    #ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
+    docker run -itd --network=haynet --ip=$web_lb_ip --name "web_load_balancer" web_load_balancer
 
-    printf "\nNOTE: Use Load Balancer IP $ip to fetch photos. Eg: curl http://$ip/\n\n"
+    printf "\nNOTE: Use Load Balancer IP $web_lb_ip to fetch photos. Eg: curl http://$web_lb_ip/\n\n"
 }
 
 

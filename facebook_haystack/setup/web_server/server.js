@@ -11,6 +11,7 @@ console.log('Web server is running on port: ' + PORT);
 
 //const cacheserver = '172.17.0.1:8081';
 const cacheserver = process.env['CACHE_LB_IP'];
+const webserver = process.env['WEB_LB_IP'];
 
 /* ######## store & directory setup   ######## */
 const cassandra = require('cassandra-driver');
@@ -215,7 +216,7 @@ app.post('/photos', function (req, res) {
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
 
 			// send the photo blob to store
-			var photo_data = "http://" + cacheserver + "/photos/" + params.photo_id;
+			var photo_data = "http://" + webserver + "/photos/" + params.photo_id;
 			res.write(photo_data);
 			res.end();
 		});

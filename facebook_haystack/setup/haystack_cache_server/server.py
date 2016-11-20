@@ -58,4 +58,4 @@ def cachePhoto(photo_id):
 
 if __name__ == '__main__':
     # Create a controller instance
-    app.run(host='192.168.6.1',port=8080)
+    app.run(host='0.0.0.0',port=8080)
