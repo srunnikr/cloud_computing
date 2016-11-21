@@ -152,9 +152,11 @@ function createURL(photo_id, callback) {
 }
 
 app.delete('/photos/:photo_id/delete', function (req, res) {
-	const q = 'UPDATE haystack_store_db.index_data SET delete_flag=true WHERE photo_id=?';
+	const q = 'UPDATE haystack_store_db.index_data SET delete_flag=true WHERE photo_id=:photo_id';
+	var parameters = { photo_id: req.params.photo_id };
+
 	// set the flag in the store
-	storeClient.execute(q, [req.params.photo_id], function (err, result) {
+	storeClient[0].execute(q, parameters, { prepare: true }, function (err, result) {
 		if (err) {
 			console.error(err);
 			res.status(400).send(err);
@@ -162,14 +164,15 @@ app.delete('/photos/:photo_id/delete', function (req, res) {
 		console.log("Store: deleted photo with id: " + req.params.photo_id);
 
 		// set the flag in the directory
-		const q2 = 'UPDATE haystack_dir_db.photo_metadata SET delete_flag=true WHERE photo_id=?';
-		directoryClient.execute(q2, [req.params.photo_id], function (err, result) {
+		const q2 = 'UPDATE haystack_dir_db.photo_metadata SET delete_flag=true WHERE photo_id=:photo_id';
+		directoryClient.execute(q2, parameters, { prepare: true }, function (err, result) {
 			if (err) {
 				console.error(err);
 				res.status(400).send(err);
 			}
 			console.log("Directory: deleted photo with id: " + req.params.photo_id);
 			res.status(202);
+			res.send();
 		});
 
 	});
