@@ -7,7 +7,6 @@ from flask import Response
 import json
 
 app = Flask(__name__)
-
 cache_controller = haystackCacheControllerDirectory()
 
 #called from app.get/photos/photo_id first check cache
@@ -17,7 +16,7 @@ def getUrl(photo_id):
     print ("request to get url for photo with id: "+photo_id)
     queryResult = cache_controller.queryMemcache(photo_id)
     if queryResult == None:
-        resp = Response("",status=404, mimetype='text/html')
+        resp = Response("",status=200, mimetype='text/html')
         return resp
     else:
         print("Cache hit for url: " + photo_id)
@@ -28,14 +27,15 @@ def getUrl(photo_id):
 # POST request to this URL will add photo_id and url mapping to directory cache
 # URL type : /cacheit/photo_id/url
 #called from addMetadataToHaystackDir
-@app.route('/cacheit/<photo_id>/<url>', methods=['POST'])
-def cachePhoto(photo_id,url):
+@app.route('/cacheit/<machine_id>/<logical_volume_id>/<photo_id>/<cookie>', methods=['POST'])
+def cachePhoto(machine_id,logical_volume_id,photo_id,cookie):
     photo_id = photo_id.split(".")[0]
-    print ("Caching request for photo: ",photo_id, " url: ", url)
+	url = "http://172.17.0.1:8081"+ "/" + machine_id + "/" + logical_volume_id + "/" + photo_id + ".jpg?cookie=" + cookie;
+	print ("Caching request for photo: ",photo_id, " url: ", url)
     print ("Writing to cache")
     cache_controller.writeMemcache(photo_id, url)
     return Response(status=200)
 
 if __name__ == '__main__':
     # Create a controller instance
-    app.run(host='192.168.10.1',port=8080)
+    app.run(host='0.0.0.0',port=8080)
