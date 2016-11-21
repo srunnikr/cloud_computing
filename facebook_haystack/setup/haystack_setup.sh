@@ -21,6 +21,7 @@ CACHE_SERVER_IP_BLOCK=6	# IP Range: 192.168.6.X
 DIR_CACHE_IP_BLOCK=7	# IP Range: 192.168.7.x
 DIR_CACHE_SERVER_IP_BLOCK=8	# IP Range: 192.168.8.X
 
+FLASK_CACHE_DIR='./flask_cache_server'
 STORE_BASE_DIR='./haystack_store'
 CACHE_BASE_DIR='./haystack_cache'
 CACHE_SERVER_DIR='./haystack_cache_server'
@@ -102,11 +103,12 @@ remove () {
     docker rmi -f haystack_cache
     #docker rmi -f haystack_directory
     docker rmi -f web_server
-    #docker rmi -f web_load_balancer
-    #docker rmi -f cache_load_balancer
-				#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
+    docker rmi -f web_load_balancer
+    docker rmi -f cache_load_balancer
+	docker rmi -f haystack_cache_server # takes too long, comment this after the first build
 	docker rmi -f haystack_dir_cache
     docker rmi -f dir_cache_server
+    docker rmi -f flask_cache_server
 
     docker network rm haynet
 
@@ -128,17 +130,18 @@ build () {
     echo "*******************************"
     echo "*    BUILD ALL THE IMAGES     *"
     echo "*******************************"
-    docker build -t haystack_store $STORE_BASE_DIR
+    docker build -t flask_cache_server $FLASK_CACHE_DIR
+    #docker build -t haystack_store $STORE_BASE_DIR
     docker build -t haystack_cache $CACHE_BASE_DIR
 	docker build -t haystack_cache_server $CACHE_SERVER_DIR
-    docker build -t haystack_directory $DIR_BASE_DIR
+    #docker build -t haystack_directory $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
 	docker build -t haystack_dir_cache $DIR_CACHE_BASE_DIR
     docker build -t dir_cache_server $DIR_CACHE_SERVER_DIR
 
     #defer load balancer image creation for now until web server containers are not created
-    #docker build -t web_load_balancer $BALANCER_BASE_DIR
-    #docker build -t cache_load_balancer $BALANCER_BASE_DIR
+    docker build -t web_load_balancer $BALANCER_BASE_DIR
+    docker build -t cache_load_balancer $BALANCER_BASE_DIR
 
     # Start all the container instances
     echo "**************************************"
