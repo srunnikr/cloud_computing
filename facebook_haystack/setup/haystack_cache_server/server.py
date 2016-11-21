@@ -20,7 +20,7 @@ def getPhoto(machine_id, logical_vol, photo_id):
     queryResult = cache_controller.queryMemcache(photo_id+cookie_id)
     if queryResult == None:
         print ("Memcache miss, searching on store")
-        queryResult = store_controller.queryStore(photo_id, cookie_id)
+        queryResult = store_controller.queryStore(photo_id, cookie_id, machine_id)
         if queryResult == None:
             print ("Detected inconsistency, photo "+photo_id + " not found in cache or store")
             resp = Response("DAMMMMMNNNNNN....Invalid URL", status=404)
@@ -41,13 +41,13 @@ def writePhoto(photo_id, cookie_id):
     return status.HTTP_400_BAD_REQUEST
 
 # POST request to this URL will take the photo from store and cache it on memserver
-# URL type : /cacheit/phpto1.jpg?cookie=cookie_id
-@app.route('/cacheit/<photo_id>', methods=['POST'])
-def cachePhoto(photo_id):
+# URL type : /cacheit/machine_id/phpto1.jpg?cookie=cookie_id
+@app.route('/cacheit/<machine_id>/<photo_id>', methods=['POST'])
+def cachePhoto(machine_id, photo_id):
     photo_id = photo_id.split(".")[0]
     cookie_id = str(request.args.get('cookie'))
-    print ("Caching request for photo: ",photo_id, " cookie: ", cookie_id)
-    photo = store_controller.queryStore(photo_id, cookie_id)
+    print ("Caching request for photo: ",photo_id, " cookie: ", cookie_id, " machine_id: ", machine_id)
+    photo = store_controller.queryStore(photo_id, cookie_id, machine_id)
     if photo == None:
         print ("Photo not found in store, skipping the caching part")
         resp = Response("Error while caching, not found in store",status=404)

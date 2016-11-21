@@ -1,10 +1,10 @@
 #!/bin/bash
 
-num_store=1
+num_store=2
 num_directory=1
 num_cache=1
 num_cache_server=1
-num_web_server=1
+num_web_server=2
 
 SUBNET_BASE="192.168.%d.%d"
 SUBNET_MASK=16
@@ -37,7 +37,7 @@ remove () {
     while [ $i -lt $num_store ]
     do
         name=$(printf "%s-%d" "photo-store" "$i")
-        docker rm -f $name
+        #docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -61,7 +61,7 @@ remove () {
     while [ $i -lt $num_directory ]
     do
         name=$(printf "%s-%d" "directory" "$i")
-        docker rm -f $name
+        #docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -77,7 +77,7 @@ remove () {
     docker rm -f "web_load_balancer"
 
     #docker rmi -f haystack_store
-    docker rmi -f haystack_cache 
+    docker rmi -f haystack_cache
     #docker rmi -f haystack_directory
     docker rmi -f web_server
     #docker rmi -f web_load_balancer
@@ -118,11 +118,11 @@ build () {
     echo "**************************************"
     echo "*    START ALL CONTAINER INSTANCES   *"
     echo "**************************************"
-    
+
     #############################################
     #               Haystack Store              #
     #############################################
-    
+
     # initiate Cassandra instances for photo stores
     store_ips=( )
     i=0
@@ -130,7 +130,7 @@ build () {
     do
         name=$(printf "%s-%d" "photo-store" "$i")
         ip=$(printf "$SUBNET_BASE" $STORE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_store
+        docker run -itd --net=haynet --ip=$ip --name $name haystack_store
         store_ips=(${store_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -151,7 +151,7 @@ build () {
     do
         name=$(printf "%s-%d" "haystack-cache" "$i")
         ip=$(printf "$SUBNET_BASE" $CACHE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
+        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128 "-I 32M"	# 128MB cache with 32MB max object size
         cache_ips=(${cache_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -161,7 +161,7 @@ build () {
     i=0
     cache_server_ips=( )
     while [ $i -lt $num_cache_server ]
-    do 
+    do
         name=$(printf "%s-%d" "haystack-cache-server" "$i")
 	    ip=$(printf "$SUBNET_BASE" $CACHE_SERVER_IP_BLOCK 1)
 
@@ -175,7 +175,7 @@ build () {
             stores_env=`echo "$stores_env,$store_ip"`
         done
 
-	    docker run -itd --network=haynet --ip=$ip --env CACHE_IPS="$cache_env" --env STORE_IPS="$stores_env" --name $name haystack_cache_server
+	    docker run -itd --net=haynet --ip=$ip --env CACHE_IPS="$cache_env" --env STORE_IPS="$stores_env" --name $name haystack_cache_server
         cache_server_ips=(${cache_server_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -189,12 +189,12 @@ build () {
         server_list_pattern="${server_list_pattern}\tserver ${server_ip}:$CACHE_SERVER_PORT;\n"
     done
     sed "$server_list_pattern" $BALANCER_BASE_DIR/nginx.conf.template > $BALANCER_BASE_DIR/nginx.conf
-    
+
     #Finally build load_balancer image
     docker build -t cache_load_balancer $BALANCER_BASE_DIR
 
     ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 1)
-    docker run -itd --network=haynet --ip=$ip --name "cache_load_balancer" cache_load_balancer
+    docker run -itd --net=haynet --ip=$ip --name "cache_load_balancer" cache_load_balancer
     cache_load_balancer_ip=$ip
 
 
@@ -210,13 +210,13 @@ build () {
         do
             name=$(printf "%s-%d" "directory" "$i")
             ip=$(printf "$SUBNET_BASE" $DIR_IP_BLOCK $(expr $i + 1))
-            docker run -itd --network=haynet --ip=$ip --name $name haystack_directory
+            docker run -itd --net=haynet --ip=$ip --name $name haystack_directory
             directory_ips=(${directory_ips[@]} $ip)
             i=`expr $i + 1`
         done
 
 
-    
+
     web_lb_ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
 
     # initiate Directory Web servers instances
@@ -237,7 +237,7 @@ build () {
             stores_env=`echo "$stores_env,$store_ip"`
         done
 
-        docker run -itd --network=haynet --ip=$ip --env WEB_LB_IP="$web_lb_ip" --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env STORE_IPS="$stores_env" --name $name web_server
+        docker run -itd --net=haynet --ip=$ip --env WEB_LB_IP="$web_lb_ip" --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env STORE_IPS="$stores_env" --name $name web_server
         web_server_ips=(${web_server_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -256,7 +256,7 @@ build () {
     docker build -t web_load_balancer $BALANCER_BASE_DIR
 
     #ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
-    docker run -itd --network=haynet --ip=$web_lb_ip --name "web_load_balancer" web_load_balancer
+    docker run -itd --net=haynet --ip=$web_lb_ip --name "web_load_balancer" web_load_balancer
 
     printf "\nNOTE: Use Load Balancer IP $web_lb_ip to fetch photos. Eg: curl http://$web_lb_ip/\n\n"
 }
