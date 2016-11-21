@@ -44,7 +44,7 @@ remove () {
     while [ $i -lt $num_store ]
     do
         name=$(printf "%s-%d" "photo-store" "$i")
-        #docker rm -f $name
+        docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -68,7 +68,7 @@ remove () {
     while [ $i -lt $num_directory ]
     do
         name=$(printf "%s-%d" "directory" "$i")
-        #docker rm -f $name
+        docker rm -f $name
         i=`expr $i + 1`
     done
 
@@ -99,9 +99,9 @@ remove () {
     docker rm -f "cache_load_balancer"
     docker rm -f "web_load_balancer"
 
-    #docker rmi -f haystack_store
+    docker rmi -f haystack_store
     docker rmi -f haystack_cache
-    #docker rmi -f haystack_directory
+    docker rmi -f haystack_directory
     docker rmi -f web_server
     docker rmi -f web_load_balancer
     docker rmi -f cache_load_balancer
@@ -131,10 +131,10 @@ build () {
     echo "*    BUILD ALL THE IMAGES     *"
     echo "*******************************"
     docker build -t flask_cache_server $FLASK_CACHE_DIR
-    #docker build -t haystack_store $STORE_BASE_DIR
+    docker build -t haystack_store $STORE_BASE_DIR
     docker build -t haystack_cache $CACHE_BASE_DIR
 	docker build -t haystack_cache_server $CACHE_SERVER_DIR
-    #docker build -t haystack_directory $DIR_BASE_DIR
+    docker build -t haystack_directory $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
 	docker build -t haystack_dir_cache $DIR_CACHE_BASE_DIR
     docker build -t dir_cache_server $DIR_CACHE_SERVER_DIR
