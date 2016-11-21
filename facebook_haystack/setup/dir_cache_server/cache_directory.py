@@ -1,13 +1,14 @@
 from flask import Flask, render_template
-from haystackCacheController import haystackCacheController
-from haystackStoreController import haystackStoreController
+from haystackCacheControllerDirectory import haystackCacheControllerDirectory
 from flask.ext.api import status
 from flask import request
 from flask import Response
 import json
+import os
 
 app = Flask(__name__)
 cache_controller = haystackCacheControllerDirectory()
+lb_env = os.environ["CACHE_LB_IP"]
 
 #called from app.get/photos/photo_id first check cache
 @app.route('/photos/<photo_id>', methods=['GET'])
@@ -30,12 +31,12 @@ def getUrl(photo_id):
 @app.route('/cacheit/<machine_id>/<logical_volume_id>/<photo_id>/<cookie>', methods=['POST'])
 def cachePhoto(machine_id,logical_volume_id,photo_id,cookie):
     photo_id = photo_id.split(".")[0]
-	url = "http://172.17.0.1:8081"+ "/" + machine_id + "/" + logical_volume_id + "/" + photo_id + ".jpg?cookie=" + cookie;
-	print ("Caching request for photo: ",photo_id, " url: ", url)
+    url = "http://" + lb_env + "/" + machine_id + "/" + logical_volume_id + "/" + photo_id + ".jpg?cookie=" + cookie
+    print ("Caching request for photo: ",photo_id, " url: ", url)
     print ("Writing to cache")
     cache_controller.writeMemcache(photo_id, url)
     return Response(status=200)
 
 if __name__ == '__main__':
     # Create a controller instance
-    app.run(host='0.0.0.0',port=8080)
+    app.run(host='0.0.0.0',port=80)

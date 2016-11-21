@@ -17,6 +17,11 @@ class haystackCacheController():
         # TODO : We need a tuple for one cache or otherwise we need a list of tuples
         #self.client = Client(self.memcacheServers[0])
         self.client = HashClient(self.memcacheServers)
+        print ("Tyring to insert a value")
+        self.client.set("Hello", "world")
+        self.writeMemcache("Hello", "World")
+        print ("Getting the value for hello")
+        print (self.queryMemcache("Hello"))
 
     def queryMemcache(self, key):
         photo = self.client.get(key)

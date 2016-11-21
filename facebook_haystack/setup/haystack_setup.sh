@@ -5,6 +5,8 @@ num_directory=1
 num_cache=1
 num_cache_server=1
 num_web_server=2
+num_dir_cache=1
+num_dir_cache_server=1
 
 SUBNET_BASE="192.168.%d.%d"
 SUBNET_MASK=16
@@ -16,6 +18,8 @@ DIR_IP_BLOCK=3          # IP Range: 192.168.3.X
 WEB_SERVER_IP_BLOCK=4   # IP Range: 192.168.4.X
 BALANCER_IP_BLOCK=5     # IP Range: 192.168.5.X
 CACHE_SERVER_IP_BLOCK=6	# IP Range: 192.168.6.X
+DIR_CACHE_IP_BLOCK=7	# IP Range: 192.168.7.x
+DIR_CACHE_SERVER_IP_BLOCK=8	# IP Range: 192.168.8.X
 
 STORE_BASE_DIR='./haystack_store'
 CACHE_BASE_DIR='./haystack_cache'
@@ -23,15 +27,17 @@ CACHE_SERVER_DIR='./haystack_cache_server'
 DIR_BASE_DIR='./haystack_dir'
 SERVER_BASE_DIR='./web_server'
 BALANCER_BASE_DIR='./load_balancer'
+DIR_CACHE_BASE_DIR='./haystack_dir_cache'
+DIR_CACHE_SERVER_DIR='./dir_cache_server'
 
 CACHE_SERVER_PORT=8080
 WEB_SERVER_PORT=8080
 
 remove () {
     # clean existing images and containers
-    echo "****************************"
-    echo "*  CLEANUP EXISTING STUFF  *"
-    echo "****************************"
+    echo "*********************************"
+    echo "*  CLEANUP EXISTING CONTAINERS  *"
+    echo "*********************************"
 
     i=0
     while [ $i -lt $num_store ]
@@ -73,6 +79,22 @@ remove () {
         i=`expr $i + 1`
     done
 
+    i=0
+    while [ $i -lt $num_dir_cache ]
+    do
+        name=$(printf "%s-%d" "dir-cache" "$i")
+        docker rm -f $name
+        i=`expr $i + 1`
+    done
+
+    i=0
+    while [ $i -lt $num_dir_cache_server ]
+    do
+        name=$(printf "%s-%d" "dir-cache-server" "$i")
+        docker rm -f $name
+        i=`expr $i + 1`
+    done
+
     docker rm -f "cache_load_balancer"
     docker rm -f "web_load_balancer"
 
@@ -83,6 +105,8 @@ remove () {
     #docker rmi -f web_load_balancer
     #docker rmi -f cache_load_balancer
 				#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
+	docker rmi -f haystack_dir_cache
+    docker rmi -f dir_cache_server
 
     docker network rm haynet
 
@@ -109,6 +133,8 @@ build () {
 	docker build -t haystack_cache_server $CACHE_SERVER_DIR
     docker build -t haystack_directory $DIR_BASE_DIR
     docker build -t web_server $SERVER_BASE_DIR
+	docker build -t haystack_dir_cache $DIR_CACHE_BASE_DIR
+    docker build -t dir_cache_server $DIR_CACHE_SERVER_DIR
 
     #defer load balancer image creation for now until web server containers are not created
     #docker build -t web_load_balancer $BALANCER_BASE_DIR
@@ -151,7 +177,7 @@ build () {
     do
         name=$(printf "%s-%d" "haystack-cache" "$i")
         ip=$(printf "$SUBNET_BASE" $CACHE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128 "-I 32M"	# 128MB cache with 32MB max object size
+        docker run -itd --net=haynet --ip=$ip --name $name haystack_cache -m 128 "-I 32M"	# 128MB cache with 32MB max object size
         cache_ips=(${cache_ips[@]} $ip)
         i=`expr $i + 1`
     done
@@ -197,8 +223,6 @@ build () {
     docker run -itd --net=haynet --ip=$ip --name "cache_load_balancer" cache_load_balancer
     cache_load_balancer_ip=$ip
 
-
-
     #############################################
     #           Haystack Directory              #
     #############################################
@@ -215,7 +239,38 @@ build () {
             i=`expr $i + 1`
         done
 
+    dir_cache_ips=( )
+	i=0
+    while [ $i -lt $num_dir_cache ]
+        do
+            name=$(printf "%s-%d" "dir-cache" "$i")
+            ip=$(printf "$SUBNET_BASE" $DIR_CACHE_IP_BLOCK $(expr $i + 1))
+            docker run -itd --net=haynet --ip=$ip --name $name haystack_dir_cache
+            dir_cache_ips=(${dir_cache_ips[@]} $ip)
+            i=`expr $i + 1`
+        done
 
+    # initiate Haystack dir Cache's web server instances
+    i=0
+    dir_cache_server_ips=( )
+    while [ $i -lt $num_dir_cache_server ]
+    do
+        name=$(printf "%s-%d" "dir-cache-server" "$i")
+        ip=$(printf "$SUBNET_BASE" $DIR_CACHE_SERVER_IP_BLOCK 1)
+
+        dir_cache_env="${dir_cache_ips[0]}"
+        for dir_cache_ip in ${dir_cache_ips[@]:1}; do
+            dir_cache_env=`echo "$dir_cache_env,$dir_cache_ip"`
+        done
+
+        docker run -itd --net=haynet --ip=$ip --env DIR_CACHE_IPS="$dir_cache_env" --env CACHE_LB_IP="$cache_load_balancer_ip" --name $name dir_cache_server
+        dir_cache_server_ips=(${dir_cache_server_ips[@]} $ip)
+        i=`expr $i + 1`
+    done
+
+    #############################################
+    #                Web Servers                #
+    #############################################
 
     web_lb_ip=$(printf "$SUBNET_BASE" $BALANCER_IP_BLOCK 2)
 
@@ -232,12 +287,17 @@ build () {
             directory_env=`echo "$directory_env,$directory_ip"`
         done
 
+        dir_cache_server_env="${dir_cache_server_ips[0]}"
+        for dir_cache_server_ip in ${dir_cache_server_ips[@]:1}; do
+            dir_cache_server_env=`echo "$dir_cache_server_env,$dir_cache_server_ip"`
+        done
+
         stores_env="${store_ips[0]}"
         for store_ip in ${store_ips[@]:1}; do
             stores_env=`echo "$stores_env,$store_ip"`
         done
 
-        docker run -itd --net=haynet --ip=$ip --env WEB_LB_IP="$web_lb_ip" --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env STORE_IPS="$stores_env" --name $name web_server
+        docker run -itd --net=haynet --ip=$ip --env WEB_LB_IP="$web_lb_ip" --env CACHE_LB_IP="$cache_load_balancer_ip" --env DIRECTORY_IPS="$directory_env" --env DIR_CACHE_SERVER_IPS="$dir_cache_server_env" --env STORE_IPS="$stores_env" --name $name web_server
         web_server_ips=(${web_server_ips[@]} $ip)
         i=`expr $i + 1`
     done
