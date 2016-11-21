@@ -151,7 +151,7 @@ build () {
     do
         name=$(printf "%s-%d" "haystack-cache" "$i")
         ip=$(printf "$SUBNET_BASE" $CACHE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
+        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128 "-I 32M"	# 128MB cache with 32MB max object size
         cache_ips=(${cache_ips[@]} $ip)
         i=`expr $i + 1`
     done
