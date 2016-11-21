@@ -77,9 +77,9 @@ remove () {
     docker rm -f "web_load_balancer"
 
     #docker rmi -f haystack_store
-    #docker rmi -f haystack_cache
+    docker rmi -f haystack_cache
     #docker rmi -f haystack_directory
-    #docker rmi -f web_server
+    docker rmi -f web_server
     #docker rmi -f web_load_balancer
     #docker rmi -f cache_load_balancer
 				#docker rmi -f haystack_cache_server # takes too long, comment this after the first build
@@ -151,7 +151,7 @@ build () {
     do
         name=$(printf "%s-%d" "haystack-cache" "$i")
         ip=$(printf "$SUBNET_BASE" $CACHE_IP_BLOCK $(expr $i + 1))
-        docker run -itd --net=haynet --ip=$ip --name $name haystack_cache -m 128	# 128MB cache
+        docker run -itd --network=haynet --ip=$ip --name $name haystack_cache -m 128 "-I 32M"	# 128MB cache with 32MB max object size
         cache_ips=(${cache_ips[@]} $ip)
         i=`expr $i + 1`
     done
