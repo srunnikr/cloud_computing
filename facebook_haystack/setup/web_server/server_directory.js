@@ -10,6 +10,7 @@ app.listen(PORT);
 console.log('Web server is running on port: ' + PORT);
 
 const cacheserver = '172.17.0.1:8081';
+const dircache	= 'some_env_variable';
 
 /* ######## store & directory setup   ######## */
 const cassandra = require('cassandra-driver');
@@ -102,16 +103,27 @@ app.get('/photos/:photo_id', function (req, res) {
 	//get /cache_directory/photos/phot0_id
 	//if response is not NULL res.writeHead(301 with url)
 	//if response is null then call createURL
-	createURL(req.params.photo_id, function (url) {
-		if (url == "") {
-			res.writeHead(404, "NOT FOUND");
-			res.end();
-			return;
-		}
-		console.log("Sending Redirect response");
-		res.writeHead(301, "Redirect", { 'Location': url });
+	var cache_dir_url = dircache + '/photos/'+req.params.photo_id;
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', cache_dir_url, false);
+	xhr.send();
+	var url_from_cache = xhr.responseText;
+	if(url_from_cache!=""){
+		res.writeHead(301,"Redirect",{ 'Location': url_from_cache});
 		res.end();
-	});
+	}
+	else {
+		createURL(req.params.photo_id, function (url) {
+			if (url == "") {
+				res.writeHead(404, "NOT FOUND");
+				res.end();
+				return;
+			}
+			console.log("Sending Redirect response");
+			res.writeHead(301, "Redirect", { 'Location': url });
+			res.end();
+		});
+	}
 });
 
 function createURL(photo_id, callback) {
@@ -274,6 +286,12 @@ function addMetadataToHaystackDir(photo_id, callback) {
 	directoryClient.execute(insert_metadata_query, params, { prepare: true }, function (err, result) {
 		if (err) return console.error(err);
 		console.log("Added metadata to photo_metadata");
+		var cache_dir_url = dircache + "/cacheit/" + params.machine_id + "/" + params.logical_volume_id + "/" + params.photo_id + "/" + params.cookie;
+		
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', cache_dir_url, false);
+		xhr.send();
+		console.log(xhr.responseText+" "+xhr.status);
 		callback(params);
 	});
 }
