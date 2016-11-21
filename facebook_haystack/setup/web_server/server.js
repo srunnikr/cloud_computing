@@ -4,6 +4,8 @@ const express = require('express');
 const request = require('request');
 const uuid = require('node-uuid');
 const sleep = require('sleep');
+const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
+
 const app = express();
 const PORT = 8080;
 app.listen(PORT);
@@ -17,8 +19,11 @@ const webserver = process.env['WEB_LB_IP'];
 const cassandra = require('cassandra-driver');
 //const dataStore = '192.168.1.1';
 const dataStore = process.env['STORE_IPS'].split(',');
-
-const storeClient = new cassandra.Client({ contactPoints: dataStore });
+var storeClient = [];
+for (var i = 0; i < dataStore.length; i++) {
+    storeClient[i] = new cassandra.Client({ contactPoints: [dataStore[i]] });
+}
+//const storeClient = new cassandra.Client({ contactPoints: dataStore });
 
 //const directory = '192.168.3.1';
 const directory = process.env['DIRECTORY_IPS'].split(',');
@@ -30,24 +35,32 @@ const createBlobTable = 'CREATE TABLE IF NOT EXISTS haystack_store_db.blob_data(
 const createDirectoryKeyspace = 'CREATE KEYSPACE IF NOT EXISTS haystack_dir_db WITH replication = {\'class\': \'SimpleStrategy\', \'replication_factor\' : 1}';
 const createDirectoryTable = 'CREATE TABLE IF NOT EXISTS haystack_dir_db.photo_metadata(photo_id text PRIMARY KEY, cookie text, machine_id int, logical_volume_id int, alt_key int, delete_flag boolean)';
 
-storeConnect();
+for (var i = 0; i < dataStore.length; i++) {
+    storeConnect(i);
+}
+// storeConnect();
+
+var dir_connect = false;
 var tries = 1;
-function storeConnect() {
-	storeClient.connect(function (err) {
+function storeConnect(index) {
+	storeClient[index].connect(function (err) {
 		if (err) {
 			if (tries <= 20) {
 				console.log("Failed to connect to Cassandra store. Trying again in 5 seconds: " + tries);
 				tries++;
 				sleep.sleep(5);
-				storeConnect();
+				storeConnect(index);
 			} else {
 				return console.error("Failed to connect to Cassandra store after 20 tries: " + err);
 			}
 		} else {
-			console.log('Connected to store with %d host(s): %j', storeClient.hosts.length, storeClient.hosts.keys());
-			build(storeClient, createStoreKeyspace, createIndexTable, "store");
+			console.log('Connected to store with %d host(s): %j', storeClient[index].hosts.length, storeClient[index].hosts.keys());
+			build(storeClient[index], createStoreKeyspace, createIndexTable, "store");
 			tries = 1;
-			directoryConnect(); // now connect to the directory
+            if (dir_connect) {
+			    directoryConnect(); // now connect to the directory
+                dir_connect = true;
+            }
 		}
 	});
 }
@@ -180,7 +193,7 @@ app.post('/photos', function (req, res) {
 			var index;
 
 			// 1. find a blob with less than 3 photos
-			storeClient.execute('SELECT * FROM haystack_store_db.blob_data WHERE size < 3 ALLOW FILTERING', function (err, result) {
+			storeClient[params.machine_id].execute('SELECT * FROM haystack_store_db.blob_data WHERE size < 3 ALLOW FILTERING', function (err, result) {
 				if (err) {
 					return console.error(err);
 				}
@@ -189,7 +202,7 @@ app.post('/photos', function (req, res) {
 					// create a new blob
 					blobId = uuid.v1();
 					index = 0;
-					storeClient.execute('INSERT INTO haystack_store_db.blob_data (blob_id) VALUES(:blobId)', { blobId: blobId }, { prepare: true }, function (error, result) { });
+					storeClient[params.machine_id].execute('INSERT INTO haystack_store_db.blob_data (blob_id) VALUES(:blobId)', { blobId: blobId }, { prepare: true }, function (error, result) { });
 					console.log("created a new blob");
 				} else {
 					var result_row = result.rows[0];
@@ -200,7 +213,7 @@ app.post('/photos', function (req, res) {
 				// 2. add photo to blob (index + 1) will be photo1, photo2,..etc
 				var insert_blob = 'UPDATE haystack_store_db.blob_data SET photo' + (index + 1) + '=:photo_data, size=:new_size WHERE blob_id=:blob_id';
 				var parameters = { blob_id: blobId, new_size: (index + 1), photo_data: fullBody };
-				storeClient.execute(insert_blob, parameters, { prepare: true }, function (err, result) {
+				storeClient[params.machine_id].execute(insert_blob, parameters, { prepare: true }, function (err, result) {
 					if (err) return console.error(err);
 					console.log("Added photo data");
 				});
@@ -208,9 +221,13 @@ app.post('/photos', function (req, res) {
 				// 3. create an index for the photo
 				var insert_index = "INSERT INTO haystack_store_db.index_data (photo_id, cookie, delete_flag, blob_id, needle_offset) VALUES (:photo_id, :cookie, :delete_flag, :blob_id, :needle_offset)";
 				var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, blob_id: blobId, needle_offset: (index + 1) };
-				storeClient.execute(insert_index, parameters, { prepare: true }, function (error, result) { });
+				storeClient[params.machine_id].execute(insert_index, parameters, { prepare: true }, function (error, result) { });
 
 				// 4. TODO: call /cacheit/photoid
+                var xhr = new XMLHttpRequest();
+                console.log("http://"+cacheserver+"/cacheit/"+params.photo_id+".jpg?cookie="+params.cookie);
+                xhr.open("POST", "http://"+cacheserver+"/cacheit/"+params.photo_id+".jpg?cookie="+params.cookie, true);
+                xhr.send();
 			});
 
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
@@ -223,7 +240,7 @@ app.post('/photos', function (req, res) {
 	});
 });
 
-const MAX_MACHINE_ID = 8;
+const MAX_MACHINE_ID = dataStore.length;
 const MAX_VOLUME_ID = 4;
 const MEMCACHED_IP = '128.54.243.120:8080';
 
