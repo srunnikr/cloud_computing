@@ -62,8 +62,8 @@ class haystackStoreController():
 
     def queryNeedle(self, blob_id, offset, machine_id):
         print ("Querying for the needle")
-        session = self.sessions[machine_id]
-        rows = self.session.execute('SELECT * FROM haystack_store_db.blob_data WHERE blob_id=\''+blob_id+'\' ALLOW FILTERING ')
+        session = self.sessions[int(machine_id)]
+        rows = session.execute('SELECT * FROM haystack_store_db.blob_data WHERE blob_id=\''+blob_id+'\' ALLOW FILTERING ')
         for row in rows:
             if offset == 1:
                 return row.photo1
@@ -78,7 +78,7 @@ class haystackStoreController():
 
     def queryStore(self, key, cookie, machine_id):
         # Query the index file store to get blob id and offset
-        session = self.sessions[machine_id]
+        session = self.sessions[int(machine_id)]
         print ("Querying the store")
         rows = session.execute('SELECT * FROM haystack_store_db.index_data WHERE photo_id=\''+key+'\' AND cookie=\''+cookie+'\' ALLOW FILTERING ')
         # Assuming there are no duplicate photo ids

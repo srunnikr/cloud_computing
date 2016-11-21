@@ -46,7 +46,7 @@ def writePhoto(photo_id, cookie_id):
 def cachePhoto(machine_id, photo_id):
     photo_id = photo_id.split(".")[0]
     cookie_id = str(request.args.get('cookie'))
-    print ("Caching request for photo: ",photo_id, " cookie: ", cookie_id)
+    print ("Caching request for photo: ",photo_id, " cookie: ", cookie_id, " machine_id: ", machine_id)
     photo = store_controller.queryStore(photo_id, cookie_id, machine_id)
     if photo == None:
         print ("Photo not found in store, skipping the caching part")

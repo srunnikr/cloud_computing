@@ -57,7 +57,7 @@ function storeConnect(index) {
 			console.log('Connected to store with %d host(s): %j', storeClient[index].hosts.length, storeClient[index].hosts.keys());
 			build(storeClient[index], createStoreKeyspace, createIndexTable, "store");
 			tries = 1;
-            if (dir_connect) {
+            if (!dir_connect) {
 			    directoryConnect(); // now connect to the directory
                 dir_connect = true;
             }
@@ -221,13 +221,15 @@ app.post('/photos', function (req, res) {
 				// 3. create an index for the photo
 				var insert_index = "INSERT INTO haystack_store_db.index_data (photo_id, cookie, delete_flag, blob_id, needle_offset) VALUES (:photo_id, :cookie, :delete_flag, :blob_id, :needle_offset)";
 				var parameters = { photo_id: params.photo_id, cookie: params.cookie, delete_flag: false, blob_id: blobId, needle_offset: (index + 1) };
-				storeClient[params.machine_id].execute(insert_index, parameters, { prepare: true }, function (error, result) { });
+				storeClient[params.machine_id].execute(insert_index, parameters, { prepare: true }, function (error, result) {
+                    var xhr = new XMLHttpRequest();
+                    console.log("http://"+cacheserver+"/cacheit/"+params.photo_id+".jpg?cookie="+params.cookie);
+                    xhr.open("POST", "http://"+cacheserver+"/cacheit/"+params.machine_id+"/"+params.photo_id+".jpg?cookie="+params.cookie, true);
+                    xhr.send();
+                });
 
-				// 4. TODO: call /cacheit/photoid
-                var xhr = new XMLHttpRequest();
-                console.log("http://"+cacheserver+"/cacheit/"+params.photo_id+".jpg?cookie="+params.cookie);
-                xhr.open("POST", "http://"+cacheserver+"/cacheit/"+params.photo_id+".jpg?cookie="+params.cookie, true);
-                xhr.send();
+				
+
 			});
 
 			res.writeHead(200, "OK", { 'Content-Type': 'text/html' });
